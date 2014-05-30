@@ -102,17 +102,17 @@ extern void field_reset(void);
 extern void setField(const int wid, const int hei, const int dep, const double h, const int pml, const double lambda, const double step);
 
 //pml用のσを取ってくる
-extern inline double field_sigmaX(double x, double y, double z);
-extern inline double field_sigmaY(double x, double y, double z);
-extern inline double field_sigmaZ(double x, double y, double z);
-extern inline double field_toCellUnit(const double);
-extern inline double field_toPhisycalUnit(const double);
+extern double field_sigmaX(double x, double y, double z);
+extern double field_sigmaY(double x, double y, double z);
+extern double field_sigmaZ(double x, double y, double z);
+extern double field_toCellUnit(const double);
+extern double field_toPhisycalUnit(const double);
 
 //---------------入射波---------------
-extern inline double complex field_pointLight(void);
+extern double complex field_pointLight(void);
 
-extern inline void field_nextStep(void);
-extern inline bool field_isFinish(void);
+extern void field_nextStep(void);
+extern bool field_isFinish(void);
 
 
 //:getter

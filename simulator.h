@@ -1,13 +1,16 @@
 #ifndef _SIMULATOR_H
 #define _SIMULATOR_H
-#include<complex.h>
-#include"bool.h"
+
+#include "myComplex.h"
+#include "bool.h"
+#include "field.h"
+#include "models.h"
 
 enum SOLVER{
   MPI_FDTD_3D
 };
 
-extern void simulator_init(void);
+extern void simulator_init(FieldInfo fInfo, enum MODEL m, enum SOLVER s);
 extern void simulator_calc(void);
 extern bool simulator_isFinish(void);
 extern void simulator_finish(void);

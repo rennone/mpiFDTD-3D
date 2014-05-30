@@ -7,6 +7,7 @@
 #include "models.h"
 #include "mpiFDTD3D.h"
 #include "myComplex.h"
+#include "function.h"
 
 /* about MPI  */
 static int rank;      //MPIのランク
@@ -17,7 +18,9 @@ static int SUB_N_X, SUB_N_Y, SUB_N_Z;
 static int SUB_N_PX, SUB_N_PY, SUB_N_PZ;
 static int SUB_N_CELL;
 static MPI_Datatype X_DIRECTION_DOUBLE_COMPLEX;
-
+static MPI_Datatype DCOMPLEX_XY; //XY平面
+static MPI_Datatype DCOMPLEX_YZ; //YZ平面
+static MPI_Datatype DCOMPLEX_XZ; //XZ平面
 
 //Ex(i+0.5,j) -> Ex[i,j]
 //Ey(i,j+0.5) -> Ey[i,j]
@@ -66,6 +69,11 @@ static double *C_BZMZ0=NULL, *C_BZMZ1=NULL;
 static double *EPS_EX=NULL, *EPS_EY=NULL, *EPS_EZ=NULL;
 static double *EPS_HX=NULL, *EPS_HY=NULL, *EPS_HZ=NULL;
 
+static void update(void);
+static void finish(void);
+static void init(void);
+static void reset(void);
+
 static void calcJD(void);
 static void calcE(void);
 static void calcMB(void);
@@ -78,29 +86,28 @@ static void initializeElectroMagneticField(void);
 
 static void initMpi(void);
 
-dcomplex* fdtd3D_getEx(void)
+dcomplex* mpi_fdtd3D_upml_getEx(void){  return Ex;}
+dcomplex* mpi_fdtd3D_upml_getEy(void){  return Ey;}
+dcomplex* mpi_fdtd3D_upml_getEz(void){  return Ez;}
+dcomplex* mpi_fdtd3D_upml_getHz(void){  return Hz;}
+dcomplex* mpi_fdtd3D_upml_getHx(void){  return Hx;}
+dcomplex* mpi_fdtd3D_upml_getHy(void){  return Hy;}
+
+void (* mpi_fdtd3D_upml_getUpdate(void))(void)
 {
-  return Ex;
+  return update;
 }
-dcomplex* fdtd3D_getEy(void)
+void (* mpi_fdtd3D_upml_getFinish(void))(void)
 {
-  return Ey;
+  return finish;
 }
-dcomplex* fdtd3D_getEz(void)
+void (* mpi_fdtd3D_upml_getReset(void))(void)
 {
-  return Ez;
+  return reset;
 }
-dcomplex* fdtd3D_getHz(void)
+void (* mpi_fdtd3D_upml_getInit(void))(void)
 {
-  return Hz;
-}
-dcomplex* fdtd3D_getHx(void)
-{
-  return Hx;
-}
-dcomplex* fdtd3D_getHy(void)
-{
-  return Hy;
+  return init;
 }
 
 //-------------------- index method --------------------//
@@ -133,8 +140,16 @@ static  int subIndBack(const int i)
 
 static  int subIndFront(const int i)
 {
+  NOT_DONE("subIndFront => this is left hand\n");
   return i - 1;//手前
 }
+
+#define SubIndexLeft(sInfo, ind)   ind - sInfo.SUB_N_PYZ
+#define SubIndexRight(sInfo, ind)  ind + sInfo.SUB_N_PYZ
+#define SubIndexTop(sInfo, ind)    ind + sInfo.SUB_N_PZ
+#define SubIndexBottom(sInfo, ind) ind - sInfo.SUB_N_PZ
+#define SubIndexFront(sInfo, ind)  ind + 1
+#define SubIndexBack(sInfo, ind)   ind - 1
 
 //Standard Scattered Wave
 static void scatteredWave(dcomplex *p, double *eps){
@@ -269,6 +284,9 @@ static void init(){
   setCoefficient();
 }
 
+static void reset()
+{
+}
 static void initMpi()
 {
   MPI_Comm_size(MPI_COMM_WORLD, &nproc);

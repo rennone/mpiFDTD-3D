@@ -12,7 +12,7 @@ static double complex* (*getDataX)() = NULL;
 static double complex* (*getDataY)() = NULL;
 static double complex* (*getDataZ)() = NULL;
 
-static void (*update)() = NULL;
+static void (*updateMethod)() = NULL;
 static void (* finishMethod)() = NULL;
 static void (* initMethod)() = NULL;
 static void (* resetMethod)() = NULL;
@@ -26,12 +26,15 @@ static struct timeval timer1, timer2;
 
 static void setMPI3D()
 {
-  update = 
+  updateMethod = mpi_fdtd3D_upml_getUpdate();
+  initMethod   = mpi_fdtd3D_upml_getInit();
+  finishMethod = mpi_fdtd3D_upml_getFinish();
 }
+
 static void setSolver(enum SOLVER solver)
 {
   switch(solver){
-  case TM_2D:
+  case MPI_FDTD_3D:
   default:
     setMPI3D();
     break;
@@ -41,7 +44,7 @@ static void setSolver(enum SOLVER solver)
 }
 
 void simulator_calc(){
-  (*update)();
+  (*updateMethod)();
   
   field_nextStep();   //時間を一つ進める  
 }
@@ -49,7 +52,6 @@ void simulator_calc(){
 void simulator_init(FieldInfo field_info, enum MODEL model, enum SOLVER solver){
   //横幅(nm), 縦幅(nm), 1セルのサイズ(nm), pmlレイヤの数, 波長(nm), 計算ステップ
   field_init(field_info);
-  setField(256, 256, 1, 10, 60, 2500);  //必ず最初にこれ
 
   /*NO_MODEL. MIE_CYLINDER, SHELF(todo), NONSHELF(todo) */
   setModel(model);     //次にこれ,モデル(散乱体)を定義

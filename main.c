@@ -3,7 +3,7 @@
 #include <mpi.h>
 #include "myComplex.h"
 #include "simulator.h"
-
+#include "field.h"
 // 以下 OPEN_GLの関数
 #ifdef USE_OPENGL
 
@@ -36,12 +36,23 @@ int numProc;
 
 int main( int argc, char *argv[] )
 {
-    MPI_Init( 0, 0 ); 
-    simulator_init();
+  FieldInfo fInfo;
+  fInfo.width_nm  = 660;
+  fInfo.height_nm = 660;
+  fInfo.h_u_nm    = 10;
+  fInfo.pml       = 10;
+  fInfo.lambda_nm = 300;
+  fInfo.stepNum   = 1500;
+  fInfo.theta_deg = 0;
+  fInfo.phi_deg = 0;
+  enum MODEL modelType   = NO_MODEL;
+  enum SOLVER solberType = MPI_FDTD_3D;
+  MPI_Init( 0, 0 );
+  simulator_init(fInfo, modelType, solberType);
 
 #ifndef _USE_OPENGL    //only calculate mode
-
-    while(!simulator_isFinish()){
+    while(!simulator_isFinish())
+    {
        simulator_calc();
        //   MPI_Barrier(MPI_COMM_WORLD);
     }

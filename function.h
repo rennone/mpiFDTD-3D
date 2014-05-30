@@ -13,6 +13,6 @@ extern void moveDirectory(const char*);
 
 
 //まだ実装していない部分を,やり忘れないようにexitさせたいときに使う.
-#define NOT_DONE(msg) printf(msg); exit(2);
+#define NOT_DONE(msg) printf(msg); exit(2)
 
 #endif

@@ -52,7 +52,7 @@ static double maxTime;
 static NTFFInfo ntff_info;
 
 static void field_setNTFF(int);
-static void initMpi(void);
+static void mpiSplit(void);
 
 //:public------------------------------------//
  double field_toCellUnit(const double phisycalUnit){
@@ -79,6 +79,14 @@ WaveInfo_S field_getWaveInfo_S()         { return waveInfo_s;}
 SubFieldInfo_S field_getSubFieldInfo_S() { return subFieldInfo_s;}
 FieldInfo_S field_getFieldInfo_S()       { return fieldInfo_s;}
 FieldInfo field_getFieldInfo()   { return fieldInfo;}
+
+int field_subIndex(int i, int j, int k){
+    return i*subFieldInfo_s.SUB_N_PYZ + j*subFieldInfo_s.SUB_N_PZ + k;
+}
+
+int field_index(int i, int j, int k){
+    return i*fieldInfo_s.N_PYZ + j*fieldInfo_s.N_PZ+k;
+}
 
 void field_init(FieldInfo field_info)
 {
@@ -123,7 +131,7 @@ void field_init(FieldInfo field_info)
   ntff_info.back   = N_PZ - N_PML - 5;
 
   // todo
-  NOT_DONE("you have to check RFperC in 3D")
+  NOT_DONE("you have to check RFperC in 3D");
   
   double len = (ntff_info.top - ntff_info.bottom)/2;
   ntff_info.RFperC = len*2;
@@ -211,12 +219,6 @@ double field_sigmaZ(const double x, const double y, const double z)
     return pow(1.0*(z - (N_PZ-N_PML-1))/N_PML,M);
 }
 
-//1次元配列に変換
- int field_index(const int i, const int j, const int k)
-{
-  return i*N_PY*N_PZ + j*N_PZ + k;
-}
-
 //------------------getter-------------------------//
 
 //------------------light method----------------------//
@@ -236,7 +238,7 @@ bool field_isFinish(void){
   return time >= maxTime;
 }
 
-static void init_mpi(void)
+static void mpiSplit(void)
 {
   MPI_Comm_size(MPI_COMM_WORLD, &NPROC);
   int dim = 3;          //number of dimension
@@ -250,7 +252,7 @@ static void init_mpi(void)
   MPI_Cart_shift(grid_comm, 0, 1, &subFieldInfo_s.LtRank, &subFieldInfo_s.RtRank); //x方向の隣
   MPI_Cart_shift(grid_comm, 1, 1, &subFieldInfo_s.BmRank, &subFieldInfo_s.TpRank); //y方向
 
-  NOT_DONE("field.c check the order of FtRank and BkRank ")
+  NOT_DONE("field.c check the order of FtRank and BkRank ");
   MPI_Cart_shift(grid_comm, 2, 1, &subFieldInfo_s.FtRank, &subFieldInfo_s.BkRank); //z方向 todo 逆かもしれない
 
   //プロセス座標において自分がどの位置に居るのか求める(何行何列に居るか)
