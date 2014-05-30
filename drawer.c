@@ -1,6 +1,6 @@
+#ifdef _USE_OPENGL
 #include "drawer.h"
 
-#ifdef _USE_OPENGL
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -8,19 +8,21 @@
 #include <GL/glew.h>
 #include <GLUT/glut.h>
 #include "function.h"
+#include "myComplex.h"
 
 typedef struct {
  GLfloat r,g,b;
 }colorf;
 
+#define TEX_NX 256
+#define TEX_NY 256
+
 static const int vertexNum = 4; //頂点数
-static const int TEX_NX = 256;
-static const int TEX_NY = 256;
 static colorf texColor[TEX_NX][TEX_NY]={0};
 static GLuint ver_buf, tex_buf;
 static GLuint texId;
 
-static double (*colorMode)(double complex);
+static double (*colorMode)( dcomplex );
 static void colorTransform(double p, colorf *c);
 
 static GLfloat vertices[] =
@@ -28,6 +30,7 @@ static GLfloat vertices[] =
    +1.0f, -1.0f, 0.0f, 
    +1.0f, +1.0f, 0.0f, 
    -1.0f, +1.0f, 0.0f};
+
 static GLfloat texCoords[] =
   { 0.0f, 0.0f,
     0.0f, 1.0f,
@@ -35,7 +38,8 @@ static GLfloat texCoords[] =
     1.0f, 0.0f };
 
 //--------------------prototype--------------------//
-void drawer_paintImage(int l, int b,int r, int t, int wid,int hei, double complex*,...);
+void drawer_paintImage(int l, int b,int r, int t, int wid,int hei, dcomplex*);
+void drawer_paintModel(int l, int b,int r, int t, int wid,int hei, double *);
 void drawer_draw();
 //--------------------------------------//
 
@@ -93,11 +97,10 @@ void drawer_draw()
   glDrawArrays( GL_POLYGON, 0, vertexNum);  
 }
 
-//todo 可変長引数を利用して, 複数のデータの平均で色を出すようにするべき?
-void drawer_paintImage(int left, int bottom, int right, int top, int width, int height, double complex *phis, ...)
+void drawer_paintImage(int left, int bottom, int right, int top, int width, int height, dcomplex *phis)
 {
   colorf c;
-  double complex cphi;
+  dcomplex cphi;
   double ux = 1.0*(right-left)/TEX_NX;
   double uy = 1.0*(top-bottom)/TEX_NY;
   double u = max(ux,uy);
@@ -113,10 +116,8 @@ void drawer_paintImage(int left, int bottom, int right, int top, int width, int 
   }
 }
 
-//todo 可変長引数を利用して, 複数のデータの平均で色を出すようにするべき?
-void drawer_paintImage2(int left, int bottom, int right, int top, int width, int height, double *phis, ...)
+void drawer_paintModel(int left, int bottom, int right, int top, int width, int height, double *phis)
 {
-  colorf c;
   double dphi;
   double ux = 1.0*(right-left)/TEX_NX;
   double uy = 1.0*(top-bottom)/TEX_NY;
@@ -124,11 +125,15 @@ void drawer_paintImage2(int left, int bottom, int right, int top, int width, int
   int i,j;
   double x,y;
   
-  for(i=0,x=left; i<TEX_NX && x<right; i++, x+=u){
-    for(j=0,y=bottom; j<TEX_NY && y<top; j++, y+=u){
-      dphi = dbilinear(phis,x,y,width,height) - 1;
-      colorTransform(dphi, &c);
-      texColor[i][j] = c;
+  for(i=0,x=left; i<TEX_NX && x<right; i++, x+=u)
+  {
+    for(j=0,y=bottom; j<TEX_NY && y<top; j++, y+=u)
+    {
+      dphi = dbilinear(phis,x,y,width,height);
+      double n = 1-1.0/dphi;
+      texColor[i][j].r -= n;
+      texColor[i][j].g -= n;
+      texColor[i][j].b -= n;
     }
   }
 }
@@ -153,21 +158,13 @@ void drawer_finish()
 //--------------------Color Trancform---------------------//
 static void colorTransform(double phi, colorf *col)
 {
-  double range = 3.0; //波の振幅
-  
+  double range = 1.0; //波の振幅  
   double ab_phi = phi < 0 ? -phi : phi;
-
-  //double a = ab_phi < 1 ? (ab_phi <  0.34 ? min(1.0, max(0.0, 3*ab_phi)) : (-1.5*ab_phi+2) ) : 0.5;
   double a = ab_phi < range ? (ab_phi <  range/3.0 ? 3.0/range*ab_phi : (-3.0/4.0/range*ab_phi+1.25) ) : 0.5;
   
   col->r = phi > 0 ? a:0;
   col->b = phi < 0 ? a:0;
   col->g = min(1.0, max(0.0, -3*ab_phi+2));
-  /*    
-  col->r = min(1.0, max(0.0, phi/range));
-  col->g = min(1.0, max(0.0, -ab_phi/range+1));
-  col->b = min(1.0, max(0.0, -phi/range));
-  */
 }
 
 #endif

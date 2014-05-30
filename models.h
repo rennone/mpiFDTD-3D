@@ -20,6 +20,6 @@ enum MODE{
 };
 
 extern void setModel(enum MODEL model);
-extern double models_eps(double x, double y, enum MODE mode);
+extern double models_eps(double x, double y, double z, enum MODE mode);
 
 #endif

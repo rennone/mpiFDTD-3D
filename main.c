@@ -1,70 +1,43 @@
-#include "drawer.h" //ここに_USE_OPENGLを定義
 #include <stdio.h>
 #include <stdlib.h>
-#ifdef _USE_OPENGL
-  #include <GL/glew.h>
-  #include <GLUT/glut.h>
-#endif
 #include <mpi.h>
-#include <complex.h>
+#include "myComplex.h"
 #include "simulator.h"
-#include "mpiTM_UPML.h"
-#include "mpiTE_UPML.h"
-int windowX = 100;
-int windowY = 100;
-int windowWidth = 300;
-int windowHeight=300;
 
-void display(void)
-{
-#ifdef _USE_OPENGL
-  glEnableClientState( GL_VERTEX_ARRAY );
-  glEnableClientState( GL_TEXTURE_COORD_ARRAY );
+// 以下 OPEN_GLの関数
+#ifdef USE_OPENGL
 
-  drawer_paintImage(1,1, fdtdTE_upml_getSubNx(), fdtdTE_upml_getSubNy(),
-                         fdtdTE_upml_getSubNpx(), fdtdTE_upml_getSubNpy(), simulator_getDrawingData());
-  //drawer_paintImage2(1,1, fdtdTE_upml_getSubNx(), fdtdTE_upml_getSubNy(), fdtdTE_upml_getSubNpx(), fdtdTE_upml_getSubNpy(), fdtdTE_upml_getEps());
-  drawer_draw();
-    
-  glDisableClientState( GL_VERTEX_ARRAY );
-  glDisableClientState( GL_TEXTURE_COORD_ARRAY );
-  glutSwapBuffers();
+#include "drawer.h"
+#define WINDOW_WIDTH 300
+#define WINDOW_HEIGHT 300
+
+#include <GL/glew.h>
+
+//Macの場合
+#ifdef MAC_OS
+#include <GLUT/glut.h>
 #endif
-}
 
-void idle(void)
-{
-  simulator_calc();
+//Mac以外
+#ifndef MAC_OS
+#include <GL/glut.h>
+#endif
 
-  if( simulator_isFinish() ){
-    MPI_Barrier(MPI_COMM_WORLD);
-    simulator_finish();
-    MPI_Finalize();
-exit(0);
-  }
-#ifdef _USE_OPENGL
-  glutPostRedisplay();  //再描画
-#endif  
-  MPI_Barrier(MPI_COMM_WORLD);
-}
+//プロトタイプ宣言
+static void drawField();
+static void drawSubField();
+static void display(void);
+static void idle(void);
+
+#endif
+
+int rank;
+int numProc;
 
 int main( int argc, char *argv[] )
 {
     MPI_Init( 0, 0 ); 
     simulator_init();
-#ifdef _USE_OPENGL
-    glutInit(&argc, argv);
-    glutInitWindowPosition(windowX,windowY);
-    glutInitWindowSize(windowWidth, windowHeight);
-    glutInitDisplayMode(GLUT_RGBA | GLUT_DEPTH | GLUT_DOUBLE);
-    glutCreateWindow("FDTD Simulator");
-    glutDisplayFunc(display);
-    glutIdleFunc(idle);
-    glewInit();
-    drawer_init(CABS);
-    glutMainLoop();
-    MPI_Finalize();
-#endif
 
 #ifndef _USE_OPENGL    //only calculate mode
 
@@ -77,5 +50,71 @@ int main( int argc, char *argv[] )
     MPI_Finalize();
 #endif
 
+#ifdef _USE_OPENGL
+SubFieldInfo_S subInfo = field_getSubFieldInfo_S(); 
+int windowX = 1.0*subInfo.OFFSET_X / subInfo.SUB_N_PX * WINDOW_WIDTH;
+int windowY = 800-1.0*subInfo.OFFSET_Y/subInfo.SUB_N_PY * WINDOW_HEIGHT - WINDOW_HEIGHT;
+enum COLOR_MODE colorMode = CABS;
+
+    glutInit(&argc, argv);
+    glutInitWindowPosition(windowX,windowY);
+    glutInitWindowSize(WINDOW_WIDTH, WINDOW_HEIGHT);
+    glutInitDisplayMode(GLUT_RGBA | GLUT_DEPTH | GLUT_DOUBLE);
+    glutCreateWindow("FDTD Simulator");
+    glutDisplayFunc(display);
+    glutIdleFunc(idle);
+    glewInit();
+    drawer_init(colorMode);
+    glutMainLoop();
+#endif
+
     return 1;
 }
+
+#ifdef _USE_OPENGL
+static void drawField()
+{
+  FieldInfo_S sInfo = field_getFieldInfo_S();
+  drawer_paintImage(0,0, sInfo.N_X, sInfo.N_Y, sInfo.N_PX, sInfo.N_PY,
+                    simulator_getDrawingData());
+  drawer_paintModel(0,0, sInfo.N_X, sInfo.N_Y, sInfo.N_PX, sInfo.N_PY,
+                    simulator_getEps());
+}
+
+static void drawSubField()
+{
+  SubFieldInfo_S subInfo = field_getSubFieldInfo_S();
+  drawer_paintImage(1,1, subInfo.SUB_N_X, subInfo.SUB_N_Y, subInfo.SUB_N_PX, subInfo.SUB_N_PY,
+                    simulator_getDrawingData());
+  drawer_paintModel(1,1, subInfo.SUB_N_X, subInfo.SUB_N_Y, subInfo.SUB_N_PX, subInfo.SUB_N_PY,
+                    simulator_getEps());  
+}
+
+void display(void)
+{
+  glEnableClientState( GL_VERTEX_ARRAY );
+  glEnableClientState( GL_TEXTURE_COORD_ARRAY );
+
+drawerSubField();
+  drawer_draw();
+    
+  glDisableClientState( GL_VERTEX_ARRAY );
+  glDisableClientState( GL_TEXTURE_COORD_ARRAY );
+  glutSwapBuffers();
+}
+
+void idle(void)
+{
+  simulator_calc();
+
+  if( simulator_isFinish() ){
+    MPI_Barrier(MPI_COMM_WORLD);
+    simulator_finish();
+    MPI_Finalize();
+exit(0);
+  }
+  glutPostRedisplay();  //再描画
+  MPI_Barrier(MPI_COMM_WORLD);
+}
+
+#endif

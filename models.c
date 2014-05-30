@@ -6,7 +6,7 @@
 //#include "nonshelf.h"
 
 
-static double (*epsMethod)(double, double, int, int);
+static double (*epsMethod)(double, double, double, int, int, int);
 
 static void noModel(void)
 {
@@ -17,7 +17,7 @@ static void noModel(void)
 static void circleModel(void)
 {
   //cylinder material whitch radius = lambda, origin = center of field
-  epsMethod = circleModel_EPS(N_PX*0.5, N_PY*0.5, N_PZ*0.5, field_getLambda());
+  epsMethod = circleModel_EPS();
 }
 
 void setModel(enum MODEL model)
@@ -36,7 +36,7 @@ void setModel(enum MODEL model)
   }
 }
 
-double models_eps(double x, double y, enum MODE mode){
+double models_eps(double x, double y, double z, enum MODE mode){
   double epsilon = EPSILON_0_S;
   switch(mode){
   case D_X :
