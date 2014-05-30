@@ -12,7 +12,7 @@
 *.la
 *.a
 
-mpi_fdtd2D
+fdtd3D
 CMake*
 cmake_*
 Makefile
