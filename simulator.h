@@ -7,6 +7,7 @@
 #include "models.h"
 
 enum SOLVER{
+  FDTD_3D,
   MPI_FDTD_3D
 };
 

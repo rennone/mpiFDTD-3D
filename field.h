@@ -62,11 +62,12 @@ typedef struct WaveInfo_S
 } WaveInfo_S;
 
 //シミュレーション上の物理定数
-#define C_0_S 0.7071
-static const double LIGHT_SPEED_S = 0.7;
+// 3Dでは1/√3が収束条件
+#define C_0_S 0.5735
 static const double EPSILON_0_S = 1.0;
-static const double MU_0_S = 1.0/C_0_S/C_0_S;
-static const double Z_0_S = 1.41422712488; //√(1.0/0.7/0.7/1.0) = √(μ/ε);
+static const double MU_0_S = 4;//1.0/C_0_S/C_0_S;
+#define Z_0_S = sqrt(MU_0_S/EPSILON_0_S) //todo  あらかじめ計算しておく
+//static const double Z_0_S = 1.41422712488; //√(1.0/0.7/0.7/1.0) = √(μ/ε);
 
 extern int field_getOffsetX();
 extern int field_getOffsetY();

@@ -23,11 +23,11 @@ static MPI_Datatype DCOMPLEX_XZ; //XZ平面
 //z(back-, front+)
 //Hx(i,j+0.5,k)         -> Hx[i,j,k]
 //Hy(i+0.5,j,k)         -> Hy[i,j,k]
-//Ez(i,j,k)             -> Ez[i,j,k]
-
-//Ex(i+0.5,j,k)         -> Ex[i,j,k]
-//Ey(i,j+0.5,k)         -> Ey[i,j,k]
 //Hz(i+0.5,j+0.5,k+0.5) -> Hz[i,j,k]
+
+//Ex(i+0.5,j,k+0.5)     -> Ex[i,j,k]
+//Ey(i,j+0.5,k+0.5)     -> Ey[i,j,k]
+//Ez(i,j,k)             -> Ez[i,j,k]
 
 static dcomplex *Ex = NULL;
 static dcomplex *Jx = NULL;
@@ -116,48 +116,6 @@ void (* mpi_fdtd3D_upml_getInit(void))(void)
   return init;
 }
 
-//-------------------- index method --------------------//
-/*
-static  int subInd(const int i, const int j, const int k)
-{
-  return i*SUB_N_PY*SUB_N_PZ + j*SUB_N_PZ + k;
-}
-static  int subIndLeft(const int i)
-{
-  return i - SUB_N_PY*SUB_N_PZ;//左
-}
-static  int subIndRight(const int i)
-{
-  return i + SUB_N_PY*SUB_N_PZ;//右
-}
-static  int subIndTop(const int i)
-{
-  return i + SUB_N_PZ;//上
-}
-//
-static  int subIndBottom(const int i)
-{
-  return i - SUB_N_PZ;//下
-}
-
-static  int subIndBack(const int i)
-{
-  return i + 1;//奥
-}
-
-static  int subIndFront(const int i)
-{
-  NOT_DONE("subIndFront => this is left hand\n");
-  return i - 1;//手前
-}
-*/
-#define SubIndexLeft(sInfo, ind)   ind - sInfo.SUB_N_PYZ
-#define SubIndexRight(sInfo, ind)  ind + sInfo.SUB_N_PYZ
-#define SubIndexTop(sInfo, ind)    ind + sInfo.SUB_N_PZ
-#define SubIndexBottom(sInfo, ind) ind - sInfo.SUB_N_PZ
-#define SubIndexFront(sInfo, ind)  ind + 1
-#define SubIndexBack(sInfo, ind)   ind - 1
-
 //Standard Scattered Wave
 static void scatteredWave(dcomplex *p, double *eps){
   double time     = field_getTime();
@@ -194,14 +152,11 @@ static bool debugCheck(dcomplex *p)
         int w = field_subIndex(i,j,k);
         if( fabs( creal(p[w]) ) > 100 )
         {
-          //printf("%lf, %lf, %d, %d, %d\n", creal(p[w]), cimag(p[w]), i, j, k);
-          return false;
-//return true;
+          printf("%lf, %lf, %d, %d, %d\n", creal(p[w]), cimag(p[w]), i, j, k);
+          return true;
         }
       }
-
   return false;
-
 }
 
 static void debugPrint()
@@ -213,8 +168,6 @@ static void debugPrint()
   const int w_bck = field_subBack(w);  //todo
   const int w_rht = field_subRight(w);
   const int w_top = field_subTop(w);   //一つ上
-//  const int w_bck = field_subBack(w);  //1つ前
-//  const int w_frt = field_subFront(w);  //1つ前
 
   dcomplex dJx1 = (+Hz[w] - Hz[w_btm]);
   dcomplex dJx2 = -Hy[w_frt] + Hy[w];
@@ -232,18 +185,7 @@ static void debugPrint()
   
   printf("dJ1( %lf , %lf,  %lf) , dJ2(%lf , %lf,  %lf ) dM1( %lf, %lf, %lf)  dM2(%lf, %lf, %lf) \n ",
          creal(dJx1), creal(dJy1), creal(dJz1), creal(dJx2), creal(dJy2), creal(dJz2), creal(dMx1), creal(dMy1), creal(dMz1), creal(dMx2), creal(dMy2), creal(dMz2) );
-/*
-  printf("Ex[frt-w] %lf %lf  Ez[rht-w] %lf %lf \n",
-         creal(Ex[field_subFront(i)]), creal(Ex[i]),
-         creal(Ez[field_subRight(i)]), creal(Ez[i])),
-  
-  printf("E(%lf,%lf,%lf) H(%lf,%lf,%lf)  ",
-         creal(Ex[i]), creal(Ey[i]), creal(Ez[i]),
-    creal(Hx[i]), creal(Hy[i]), creal(Hz[i]));
 
-  printf("J(%lf,%lf,%lf) M(%lf,%lf,%lf)%\n ",
-         creal(Jx[i]), creal(Jy[i]), creal(Jz[i]),
-         creal(Bx[i]), creal(By[i]), creal(Bz[i]));*/
 }
 
 //Update
@@ -261,43 +203,16 @@ static void update(void)
   }
   return;
 */
-  
-  calcJD();
-  if( debugCheck(Jz) )
-  {
-    STOP("Jz\n");
-  }
-  if( debugCheck(Jx) )
-  {
-    STOP("Jx\n");
-  }
-  if( debugCheck(Jy) )
-  {
-    STOP("Jy\n");
-  }
-  calcE();
   int i = field_subIndex(sInfo.SUB_N_PX/2, sInfo.SUB_N_PY/2, sInfo.SUB_N_PZ/2);
-  dcomplex wave = 10.0*field_getRayCoef()*cexp(-I*field_getOmega()*field_getTime());
-  Ez[i] += wave;
+  dcomplex wave = 1.0*field_getRayCoef()*cexp(-I*field_getOmega()*field_getTime());
 
   calcMB();
-  if( debugCheck(My) )
-  {
-    STOP("My\n");
-  }
-  if( debugCheck(Mx) )
-  {
-    STOP("Mx\n");
-  }  
-  if( debugCheck(Mz) )
-  {
-    STOP("Mz\n");
-  }
+  calcH();  
+  calcJD();  
+  calcE();
+  Ez[i] += wave;
 
-  calcH();
-  // Hz[i] += wave;
-
-  debugPrint();
+//  debugPrint();
   //scatteredWave(Ez, EPS_EZ);
 }
 
@@ -310,7 +225,7 @@ static  void calcJD()
     for(int j=1; j<sInfo.SUB_N_PY-1; j++)
       for(int k=1; k<sInfo.SUB_N_PZ-1; k++)        
       {
-        const int w = field_subIndex(i,j,k);
+        const int w     = field_subIndex(i,j,k);
         const int w_lft = field_subLeft(w);   //一つ左
         const int w_btm = field_subBottom(w); //一つ下
         const int w_frt = field_subFront(w);  //todo
@@ -364,10 +279,10 @@ static void calcMB()
         const dcomplex nowMy = My[w];
         const dcomplex nowMz = Mz[w];
     
-        Mx[w] = C_MX[w]*Mx[w] - C_MXEYEZ[w]*(Ez[w_top]-Ez[w] -Ey[w_frt]+Ey[w]); //原因
+        Mx[w] = C_MX[w]*Mx[w] - C_MXEYEZ[w]*(Ez[w_top]-Ez[w] -Ey[w]+Ey[w_bck]); //原因
         Bx[w] = C_BX[w]*Bx[w] + C_BXMX1[w]*Mx[w] - C_BXMX0[w]*nowMx;
       
-        My[w] = C_MY[w]*My[w] - C_MYEXEZ[w]*( Ex[w_frt]-Ex[w] -Ez[w_rht]+Ez[w]); //原因
+        My[w] = C_MY[w]*My[w] - C_MYEXEZ[w]*( Ex[w]-Ex[w_bck] -Ez[w_rht]+Ez[w]); //原因
         By[w] = C_BY[w]*By[w] + C_BYMY1[w]*My[w] - C_BYMY0[w]*nowMy;
         
         Mz[w] = C_MZ[w]*Mz[w] - C_MZEXEY[w]*( Ey[w_rht]-Ey[w] -Ex[w_top]+Ex[w] );

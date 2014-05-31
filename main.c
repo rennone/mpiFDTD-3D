@@ -37,12 +37,12 @@ int numProc;
 int main( int argc, char *argv[] )
 {
   FieldInfo fInfo;
-  fInfo.width_nm  = 660;
-  fInfo.height_nm = 660;
-  fInfo.depth_nm  = 660;
+  fInfo.width_nm  = 860;
+  fInfo.height_nm = 860;
+  fInfo.depth_nm  = 860;
   fInfo.h_u_nm    = 10;
   fInfo.pml       = 10;
-  fInfo.lambda_nm = 300;
+  fInfo.lambda_nm = 100;
   fInfo.stepNum   = 1500;
   fInfo.theta_deg = 0;
   fInfo.phi_deg = 0;
@@ -88,26 +88,19 @@ static void drawField()
 {
   FieldInfo_S fInfo = field_getFieldInfo_S();
   dcomplex *data3D = simulator_getDrawingData();
-  double *eps3D = simulator_getEps();
-  int center = field_index(fInfo.N_PX/2, 0, 0); //x = width/2 のyz平面を描画する.
-  
-  drawer_paintImage(0,0, fInfo.N_X, fInfo.N_Y, fInfo.N_PX, fInfo.N_PY,
-                    &data3D[center]);
-  drawer_paintModel(0,0, fInfo.N_X, fInfo.N_Y, fInfo.N_PX, fInfo.N_PY,
-                    &eps3D[center]);
+//  double *eps3D = simulator_getEps();
+
+  drawer_paintImage3(data3D);
+//  drawer_paintModel(0,0, fInfo.N_X, fInfo.N_Y, fInfo.N_PX, fInfo.N_PY,&eps3D);
 }
 
 static void drawSubField()
 {
   SubFieldInfo_S subInfo = field_getSubFieldInfo_S();
   dcomplex *data3D = simulator_getDrawingData();
-  double *eps3D = simulator_getEps();
-  int center = field_subIndex(subInfo.SUB_N_PX/2, 0, 0); //x = width/2 のyz平面を描画する.
-/*
-  drawer_paintImage(1,1, subInfo.SUB_N_X, subInfo.SUB_N_Y, subInfo.SUB_N_PX, subInfo.SUB_N_PY,
-                    data3D, 0);
-*/
-  drawer_paintImage3(data3D);
+//  double *eps3D = simulator_getEps();
+
+  drawer_subFieldPaintImage3(data3D);
 
 //  drawer_paintModel(1,1, subInfo.SUB_N_Y, subInfo.SUB_N_Z, subInfo.SUB_N_PY, subInfo.SUB_N_PZ,
 //                    &eps3D[center]);

@@ -146,6 +146,17 @@ void field_init(FieldInfo field_info)
   ntff_info.front  = fieldInfo_s.N_PML + 5;
   ntff_info.back   = fieldInfo_s.N_PZ - fieldInfo_s.N_PML - 5;
 
+  printf("SUB_N(%d %d %d) SUB_N_P(%d, %d, %d)\n"
+         , subFieldInfo_s.SUB_N_X
+         , subFieldInfo_s.SUB_N_Y
+         , subFieldInfo_s.SUB_N_Z
+         , subFieldInfo_s.SUB_N_PX
+         , subFieldInfo_s.SUB_N_PY
+         , subFieldInfo_s.SUB_N_PZ);
+
+  printf("SUB_N_PYZ=%d SUB_N_CELL=%d\n"
+         , subFieldInfo_s.SUB_N_PYZ
+         , subFieldInfo_s.SUB_N_CELL);
   // todo
 //  NOT_DONE("you have to check RFperC in 3D\n");
   double len = (ntff_info.top - ntff_info.bottom)/2;
@@ -240,7 +251,7 @@ double field_sigmaZ(const double __x, const double __y, const double z)
 //点光源を返す
  double complex field_pointLight(void)
 {
-  return ray_coef * (cos(w_s*time) + sin(w_s*time)*I);
+  return ray_coef * (cos(waveInfo_s.Omega_s*time) + sin(waveInfo_s.Omega_s*time)*I);
 }
 
 //------------------light method----------------------//

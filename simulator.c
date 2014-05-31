@@ -6,6 +6,7 @@
 #include "drawer.h"
 #include "models.h"
 #include "mpiFDTD3D.h"
+#include "fdtd3D.h"
 #include <sys/time.h>
 
 
@@ -24,6 +25,14 @@ static double* (* getEpsMethod )() = NULL;
 static char folderName[256];
 static struct timeval timer1, timer2;
 
+static void setFDTD3D()
+{
+  updateMethod = fdtd3D_getUpdate();
+  initMethod   = fdtd3D_getInit();
+  finishMethod = fdtd3D_getFinish();
+  getEpsMethod = fdtd3D_getEps;
+  getDrawData  = fdtd3D_getEz;
+}
 
 static void setMPI3D()
 {
@@ -38,8 +47,11 @@ static void setSolver(enum SOLVER solver)
 {
   switch(solver){
   case MPI_FDTD_3D:
-  default:
     setMPI3D();
+    break;
+  case FDTD_3D:
+  default:
+    setFDTD3D();
     break;
   }
 }
