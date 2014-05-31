@@ -68,31 +68,28 @@ static const double EPSILON_0_S = 1.0;
 static const double MU_0_S = 1.0/C_0_S/C_0_S;
 static const double Z_0_S = 1.41422712488; //√(1.0/0.7/0.7/1.0) = √(μ/ε);
 
-extern int N_X;
-extern int N_Y;
-extern int N_Z;
-extern int N_PML;
-extern int N_PX;
-extern int N_PY;
-extern int N_PZ;
-extern int N_CELL;
+extern int field_getOffsetX();
+extern int field_getOffsetY();
+extern int field_getOffsetZ();
 
-extern inline int field_getOffsetX();
-extern inline int field_getOffsetY();
-extern inline int field_getOffsetZ();
+extern int field_getSubNx();
+extern int field_getSubNy();
+extern int field_getSubNz();
 
-extern inline int field_getSubNx();
-extern inline int field_getSubNy();
-extern inline int field_getSubNz();
-
-extern inline int field_getSubNpx();
-extern inline int field_getSubNpy();
-extern inline int field_getSubNpz();
-extern inline int field_getSubNcell();
+extern int field_getSubNpx();
+extern int field_getSubNpy();
+extern int field_getSubNpz();
+extern int field_getSubNcell();
 
 //インデックスを取ってくる 
-extern inline int field_index(const int, const int, const int);
-extern inline int field_subIndex(const int, const int, const int);
+extern int field_index(const int, const int, const int);
+extern int field_subIndex(const int, const int, const int);
+extern int field_subLeft(int ind);
+extern int field_subRight(int ind);
+extern int field_subTop(int ind);
+extern int field_subBottom(int ind);
+extern int field_subFront(int ind);
+extern int field_subBack(int ind);
 
 //フィールドの横,縦の大きさ, 1セルのサイズ, pmlレイヤの数, 波長(nm), 計算ステップ
 //フィールドの横,縦の大きさ, 1セルのサイズ, pmlレイヤの数, 波長(nm), 計算ステップ

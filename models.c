@@ -54,5 +54,10 @@ double models_eps(double x, double y, double z, enum MODE mode){
   case D_XYZ :
     epsilon = (*epsMethod)(x, y, z, 1, 1, 1);
   }
+  
+  if(epsilon != EPSILON_0_S)
+  {
+    printf("%lf %lf, %lf, %lf", epsilon, x, y, z);
+  }
   return epsilon;
 }

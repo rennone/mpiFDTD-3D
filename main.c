@@ -39,6 +39,7 @@ int main( int argc, char *argv[] )
   FieldInfo fInfo;
   fInfo.width_nm  = 660;
   fInfo.height_nm = 660;
+  fInfo.depth_nm  = 660;
   fInfo.h_u_nm    = 10;
   fInfo.pml       = 10;
   fInfo.lambda_nm = 300;
@@ -50,7 +51,7 @@ int main( int argc, char *argv[] )
   MPI_Init( 0, 0 );
   simulator_init(fInfo, modelType, solberType);
 
-#ifndef _USE_OPENGL    //only calculate mode
+#ifndef USE_OPENGL    //only calculate mode
     while(!simulator_isFinish())
     {
        simulator_calc();
@@ -61,11 +62,11 @@ int main( int argc, char *argv[] )
     MPI_Finalize();
 #endif
 
-#ifdef _USE_OPENGL
+#ifdef USE_OPENGL
 SubFieldInfo_S subInfo = field_getSubFieldInfo_S(); 
 int windowX = 1.0*subInfo.OFFSET_X / subInfo.SUB_N_PX * WINDOW_WIDTH;
 int windowY = 800-1.0*subInfo.OFFSET_Y/subInfo.SUB_N_PY * WINDOW_HEIGHT - WINDOW_HEIGHT;
-enum COLOR_MODE colorMode = CABS;
+enum COLOR_MODE colorMode = CREAL;
 
     glutInit(&argc, argv);
     glutInitWindowPosition(windowX,windowY);
@@ -82,23 +83,34 @@ enum COLOR_MODE colorMode = CABS;
     return 1;
 }
 
-#ifdef _USE_OPENGL
+#ifdef USE_OPENGL
 static void drawField()
 {
-  FieldInfo_S sInfo = field_getFieldInfo_S();
-  drawer_paintImage(0,0, sInfo.N_X, sInfo.N_Y, sInfo.N_PX, sInfo.N_PY,
-                    simulator_getDrawingData());
-  drawer_paintModel(0,0, sInfo.N_X, sInfo.N_Y, sInfo.N_PX, sInfo.N_PY,
-                    simulator_getEps());
+  FieldInfo_S fInfo = field_getFieldInfo_S();
+  dcomplex *data3D = simulator_getDrawingData();
+  double *eps3D = simulator_getEps();
+  int center = field_index(fInfo.N_PX/2, 0, 0); //x = width/2 のyz平面を描画する.
+  
+  drawer_paintImage(0,0, fInfo.N_X, fInfo.N_Y, fInfo.N_PX, fInfo.N_PY,
+                    &data3D[center]);
+  drawer_paintModel(0,0, fInfo.N_X, fInfo.N_Y, fInfo.N_PX, fInfo.N_PY,
+                    &eps3D[center]);
 }
 
 static void drawSubField()
 {
   SubFieldInfo_S subInfo = field_getSubFieldInfo_S();
+  dcomplex *data3D = simulator_getDrawingData();
+  double *eps3D = simulator_getEps();
+  int center = field_subIndex(subInfo.SUB_N_PX/2, 0, 0); //x = width/2 のyz平面を描画する.
+/*
   drawer_paintImage(1,1, subInfo.SUB_N_X, subInfo.SUB_N_Y, subInfo.SUB_N_PX, subInfo.SUB_N_PY,
-                    simulator_getDrawingData());
-  drawer_paintModel(1,1, subInfo.SUB_N_X, subInfo.SUB_N_Y, subInfo.SUB_N_PX, subInfo.SUB_N_PY,
-                    simulator_getEps());  
+                    data3D, 0);
+*/
+  drawer_paintImage3(data3D);
+
+//  drawer_paintModel(1,1, subInfo.SUB_N_Y, subInfo.SUB_N_Z, subInfo.SUB_N_PY, subInfo.SUB_N_PZ,
+//                    &eps3D[center]);
 }
 
 void display(void)
@@ -106,7 +118,7 @@ void display(void)
   glEnableClientState( GL_VERTEX_ARRAY );
   glEnableClientState( GL_TEXTURE_COORD_ARRAY );
 
-drawerSubField();
+  drawSubField();
   drawer_draw();
     
   glDisableClientState( GL_VERTEX_ARRAY );

@@ -5,6 +5,7 @@
 #include "field.h"
 #include "drawer.h"
 #include "models.h"
+#include "mpiFDTD3D.h"
 #include <sys/time.h>
 
 
@@ -29,6 +30,8 @@ static void setMPI3D()
   updateMethod = mpi_fdtd3D_upml_getUpdate();
   initMethod   = mpi_fdtd3D_upml_getInit();
   finishMethod = mpi_fdtd3D_upml_getFinish();
+  getEpsMethod = mpi_fdtd3D_upml_getEps;
+  getDrawData  = mpi_fdtd3D_upml_getEz;
 }
 
 static void setSolver(enum SOLVER solver)
@@ -39,8 +42,6 @@ static void setSolver(enum SOLVER solver)
     setMPI3D();
     break;
   }
-
-  
 }
 
 void simulator_calc(){
@@ -78,10 +79,16 @@ void simulator_finish(){
 }
 
 double complex* simulator_getDrawingData(void){
-  return (* getDataZ)();
+  return (* getDrawData)();
 }
 
 bool simulator_isFinish(void)
 {
   return field_isFinish();
 }
+
+double* simulator_getEps()
+{
+  return (*getEpsMethod)();
+}
+  

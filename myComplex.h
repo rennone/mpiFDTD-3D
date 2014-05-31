@@ -12,4 +12,5 @@ extern void freeDComplex(dcomplex* array);
 
 extern double cnorm(dcomplex c);
 extern double complex cbilinear(dcomplex *p, double x, double y, int width, int height);
+extern double complex cbilinear3D(dcomplex *p, double x, double y, double z, int width, int height, int depth);
 #endif

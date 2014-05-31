@@ -1,4 +1,4 @@
-#ifdef _USE_OPENGL
+#ifdef USE_OPENGL
 #include "drawer.h"
 
 #include <stdio.h>
@@ -9,21 +9,25 @@
 #include <GLUT/glut.h>
 #include "function.h"
 #include "myComplex.h"
+#include "field.h"
 
 typedef struct {
  GLfloat r,g,b;
 }colorf;
 
-#define TEX_NX 256
-#define TEX_NY 256
+#define TEX_SIZE 256
+#define TEX_NX 512
+#define TEX_NY 512
 
 static const int vertexNum = 4; //頂点数
-static colorf texColor[TEX_NX][TEX_NY]={0};
+static colorf texColor[TEX_NX][TEX_NY]={};
 static GLuint ver_buf, tex_buf;
 static GLuint texId;
+//static GLuint texIds[3];
 
 static double (*colorMode)( dcomplex );
 static void colorTransform(double p, colorf *c);
+
 
 static GLfloat vertices[] =
   {-1.0f, -1.0f, 0.0f,
@@ -97,6 +101,19 @@ void drawer_draw()
   glDrawArrays( GL_POLYGON, 0, vertexNum);  
 }
 
+static dcomplex _cbilinear(dcomplex *p, double x, double y, int index, int toNextX, int toNextY)
+{
+  int i = floor(x);
+  int j = floor(y);
+  double dx = x - i;
+  double dy = y - j;
+//  int index = i*height + j;
+  return p[index]*(1.0-dx)*(1.0-dy)
+    + p[index+toNextX]*dx*(1.0-dy)
+    + p[index+toNextY]*(1.0-dx)*dy
+    + p[index+toNextX+toNextY]*dx*dy;
+}
+
 void drawer_paintImage(int left, int bottom, int right, int top, int width, int height, dcomplex *phis)
 {
   colorf c;
@@ -106,14 +123,66 @@ void drawer_paintImage(int left, int bottom, int right, int top, int width, int 
   double u = max(ux,uy);
   int i,j;
   double x,y;
-  
+  SubFieldInfo_S sInfo = field_getSubFieldInfo_S();
+
   for(i=0,x=left; i<TEX_NX && x<right; i++, x+=u){
     for(j=0,y=bottom; j<TEX_NY && y<top; j++, y+=u){
-      cphi = cbilinear(phis,x,y,width,height);
+      int index = field_subIndex( (int)x, (int)y ,sInfo.SUB_N_PZ/2);
+      cphi = _cbilinear(phis,x, y, index, sInfo.SUB_N_PYZ, sInfo.SUB_N_PZ);
+//      cphi = cbilinear(phis,x,y,width,height);
       colorTransform(colorMode(cphi), &c);
       texColor[i][j] = c;
     }
   }
+}
+
+void drawer_paintImage3(dcomplex *phis)
+{
+  SubFieldInfo_S sInfo = field_getSubFieldInfo_S();
+  double ux = 1.0*sInfo.SUB_N_X/TEX_SIZE;
+  double uy = 1.0*sInfo.SUB_N_Y/TEX_SIZE;
+  double uz = 1.0*sInfo.SUB_N_Z/TEX_SIZE;
+  double u = max(max(ux,uy),uz);
+  
+  colorf c;
+  dcomplex cphi;
+
+  int i,j;
+  double x,y,z;
+
+
+  //第一象限にxy平面を描画 xが横軸
+  for(i=0,x=1; i<TEX_SIZE && x<sInfo.SUB_N_PX-1; i++, x+=u){
+    for(j=0,y=1; j<TEX_SIZE && y<sInfo.SUB_N_PY-1; j++, y+=u){
+      int index = field_subIndex( (int)x, (int)y ,sInfo.SUB_N_PZ/2);
+      cphi = _cbilinear(phis,x, y, index, sInfo.SUB_N_PYZ, sInfo.SUB_N_PZ);
+      colorTransform(colorMode(cphi), &c);     
+
+      texColor[i+TEX_SIZE][j+TEX_SIZE] = c;
+    }
+  }
+  
+
+  //第二象限にxz平面を描画  xが横軸
+  for(i=0,x=1; i<TEX_SIZE && x<sInfo.SUB_N_PX-1; i++, x+=u){
+    for(j=0,z=1; j<TEX_SIZE && z<sInfo.SUB_N_PZ-1; j++, z+=u){
+      int index = field_subIndex( (int)x, sInfo.SUB_N_PY/2, (int)z);
+      cphi = _cbilinear(phis, x, z, index, sInfo.SUB_N_PYZ, 1);
+      colorTransform(colorMode(cphi), &c);
+      texColor[i][j+TEX_SIZE] = c;
+    }
+  }
+
+  //第三象限にzy平面を描画  (zが横軸)
+  for(i=0,y=1; i<TEX_SIZE && y<sInfo.SUB_N_PY-1; i++, y+=u){
+    for(j=0,z=1; j<TEX_SIZE && z<sInfo.SUB_N_PZ-1; j++, z+=u){
+      int index = field_subIndex( sInfo.SUB_N_PX/2, (int)y, (int)z);
+      cphi = _cbilinear(phis, z, y, index, 1, sInfo.SUB_N_PZ);
+      colorTransform(colorMode(cphi), &c);
+      texColor[j][i] = c;
+    }
+  }
+
 }
 
 void drawer_paintModel(int left, int bottom, int right, int top, int width, int height, double *phis)
@@ -128,7 +197,7 @@ void drawer_paintModel(int left, int bottom, int right, int top, int width, int 
   for(i=0,x=left; i<TEX_NX && x<right; i++, x+=u)
   {
     for(j=0,y=bottom; j<TEX_NY && y<top; j++, y+=u)
-    {
+    {      
       dphi = dbilinear(phis,x,y,width,height);
       double n = 1-1.0/dphi;
       texColor[i][j].r -= n;
@@ -158,7 +227,7 @@ void drawer_finish()
 //--------------------Color Trancform---------------------//
 static void colorTransform(double phi, colorf *col)
 {
-  double range = 1.0; //波の振幅  
+  double range = 0.1; //波の振幅  
   double ab_phi = phi < 0 ? -phi : phi;
   double a = ab_phi < range ? (ab_phi <  range/3.0 ? 3.0/range*ab_phi : (-3.0/4.0/range*ab_phi+1.25) ) : 0.5;
   

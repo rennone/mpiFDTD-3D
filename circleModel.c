@@ -45,12 +45,12 @@ static double eps(double x, double y, double z, int col, int row, int dep)
   double lenSqr = dx*dx+dy*dy+dz*dz;
 
   //中心との距離がr+1.2セル以上なら,そのセルは完全に媒質の外
-  //0.5*√5 = 1.118 以上なら完全に媒質の外
-  if(lenSqr >= (radius+1.2)*(radius+1.2))
+  //0.5*√3 = 0.8 以上なら完全に媒質の外
+  if(lenSqr >= (radius+1.0)*(radius+1.0))
     return EPSILON_0_S;
 
   //中心との距離がr-1セル以下なら,そのセルは完全に媒質の外 
-  if(lenSqr <= (radius-1.2)*(radius-1.2))
+  if(lenSqr <= (radius-1.0)*(radius-1.0))
     return epsilon;
 
   //さらに32*32分割し媒質内と媒質外の数を求めepsilonを決定する

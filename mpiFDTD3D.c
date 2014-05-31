@@ -12,19 +12,23 @@
 /* about MPI  */
 static int rank;      //MPIのランク
 static int nproc;     //全プロセス数
-static int offsetX, offsetY, offsetZ;  //計算領域における, このミニフィールドのオフセット量
-static int ltRank, rtRank, tpRank, bmRank; //左右上下のランク
-static int SUB_N_X, SUB_N_Y, SUB_N_Z;
-static int SUB_N_PX, SUB_N_PY, SUB_N_PZ;
-static int SUB_N_CELL;
 static MPI_Datatype X_DIRECTION_DOUBLE_COMPLEX;
 static MPI_Datatype DCOMPLEX_XY; //XY平面
 static MPI_Datatype DCOMPLEX_YZ; //YZ平面
 static MPI_Datatype DCOMPLEX_XZ; //XZ平面
 
-//Ex(i+0.5,j) -> Ex[i,j]
-//Ey(i,j+0.5) -> Ey[i,j]
-//Hz(i+0.5,j+0.5) -> Hz[i,j]
+//系は右手系
+//x(left-, right+)
+//y(bottom-, top+)
+//z(back-, front+)
+//Hx(i,j+0.5,k)         -> Hx[i,j,k]
+//Hy(i+0.5,j,k)         -> Hy[i,j,k]
+//Ez(i,j,k)             -> Ez[i,j,k]
+
+//Ex(i+0.5,j,k)         -> Ex[i,j,k]
+//Ey(i,j+0.5,k)         -> Ey[i,j,k]
+//Hz(i+0.5,j+0.5,k+0.5) -> Hz[i,j,k]
+
 static dcomplex *Ex = NULL;
 static dcomplex *Jx = NULL;
 static dcomplex *Dx = NULL;
@@ -84,14 +88,16 @@ static void freeMemories(void);
 
 static void initializeElectroMagneticField(void);
 
-static void initMpi(void);
+//static void initMpi(void);
 
 dcomplex* mpi_fdtd3D_upml_getEx(void){  return Ex;}
 dcomplex* mpi_fdtd3D_upml_getEy(void){  return Ey;}
 dcomplex* mpi_fdtd3D_upml_getEz(void){  return Ez;}
-dcomplex* mpi_fdtd3D_upml_getHz(void){  return Hz;}
 dcomplex* mpi_fdtd3D_upml_getHx(void){  return Hx;}
 dcomplex* mpi_fdtd3D_upml_getHy(void){  return Hy;}
+dcomplex* mpi_fdtd3D_upml_getHz(void){  return Hz;}
+
+double*   mpi_fdtd3D_upml_getEps(void){  return EPS_EZ;}
 
 void (* mpi_fdtd3D_upml_getUpdate(void))(void)
 {
@@ -111,6 +117,7 @@ void (* mpi_fdtd3D_upml_getInit(void))(void)
 }
 
 //-------------------- index method --------------------//
+/*
 static  int subInd(const int i, const int j, const int k)
 {
   return i*SUB_N_PY*SUB_N_PZ + j*SUB_N_PZ + k;
@@ -143,7 +150,7 @@ static  int subIndFront(const int i)
   NOT_DONE("subIndFront => this is left hand\n");
   return i - 1;//手前
 }
-
+*/
 #define SubIndexLeft(sInfo, ind)   ind - sInfo.SUB_N_PYZ
 #define SubIndexRight(sInfo, ind)  ind + sInfo.SUB_N_PYZ
 #define SubIndexTop(sInfo, ind)    ind + sInfo.SUB_N_PZ
@@ -161,10 +168,9 @@ static void scatteredWave(dcomplex *p, double *eps){
   double ks_cos = cos(rad)*k_s, ks_sin = sin(rad)*k_s;	//毎回計算すると時間かかりそうだから,代入しておく
 
   SubFieldInfo_S sInfo_s = field_getSubFieldInfo_S();
-  int i,j,k;
-  for(i=1; i<SUB_N_PX-1; i++)
-    for(j=1; j<SUB_N_PY-1; j++)
-      for(k=1; k<SUB_N_PZ; k++)
+  for(int i=1; i<sInfo_s.SUB_N_PX-1; i++)
+    for(int j=1; j<sInfo_s.SUB_N_PY-1; j++)
+      for(int k=1; k<sInfo_s.SUB_N_PZ; k++)
       {
         int l = field_subIndex(i,j,k);
         int x = i-1+sInfo_s.OFFSET_X;
@@ -178,41 +184,145 @@ static void scatteredWave(dcomplex *p, double *eps){
   
 }
 
+static bool debugCheck(dcomplex *p)
+{
+  SubFieldInfo_S sInfo = field_getSubFieldInfo_S();
+  for(int i=1; i<sInfo.SUB_N_PX-1; i++)
+    for(int j=1; j<sInfo.SUB_N_PY-1; j++)
+      for(int k=1; k<sInfo.SUB_N_PZ-1; k++)
+      {
+        int w = field_subIndex(i,j,k);
+        if( fabs( creal(p[w]) ) > 100 )
+        {
+          //printf("%lf, %lf, %d, %d, %d\n", creal(p[w]), cimag(p[w]), i, j, k);
+          return false;
+//return true;
+        }
+      }
+
+  return false;
+
+}
+
+static void debugPrint()
+{  
+  int w = field_subIndex(31, 33, 26);
+  const int w_lft = field_subLeft(w);   //一つ左
+  const int w_btm = field_subBottom(w); //一つ下
+  const int w_frt = field_subFront(w);  //todo
+  const int w_bck = field_subBack(w);  //todo
+  const int w_rht = field_subRight(w);
+  const int w_top = field_subTop(w);   //一つ上
+//  const int w_bck = field_subBack(w);  //1つ前
+//  const int w_frt = field_subFront(w);  //1つ前
+
+  dcomplex dJx1 = (+Hz[w] - Hz[w_btm]);
+  dcomplex dJx2 = -Hy[w_frt] + Hy[w];
+  dcomplex dJy1 = (+Hx[w_frt] - Hx[w]);
+  dcomplex dJy2 = -Hz[w] + Hz[w_lft];
+  dcomplex dJz1 = (+Hy[w] - Hy[w_lft]);
+  dcomplex dJz2 = -Hx[w] + Hx[w_btm];
+  
+  dcomplex dMx1 = (Ez[w_top] - Ez[w]);
+  dcomplex dMx2 = -Ey[w_frt]+Ey[w];
+  dcomplex dMy1 = (Ex[w_frt] - Ex[w]);
+  dcomplex dMy2 = -Ez[w_rht]+Ez[w];
+  dcomplex dMz1 = (Ey[w_rht] - Ey[w]);
+  dcomplex dMz2 = -Ex[w_top]+Ex[w];
+  
+  printf("dJ1( %lf , %lf,  %lf) , dJ2(%lf , %lf,  %lf ) dM1( %lf, %lf, %lf)  dM2(%lf, %lf, %lf) \n ",
+         creal(dJx1), creal(dJy1), creal(dJz1), creal(dJx2), creal(dJy2), creal(dJz2), creal(dMx1), creal(dMy1), creal(dMz1), creal(dMx2), creal(dMy2), creal(dMz2) );
+/*
+  printf("Ex[frt-w] %lf %lf  Ez[rht-w] %lf %lf \n",
+         creal(Ex[field_subFront(i)]), creal(Ex[i]),
+         creal(Ez[field_subRight(i)]), creal(Ez[i])),
+  
+  printf("E(%lf,%lf,%lf) H(%lf,%lf,%lf)  ",
+         creal(Ex[i]), creal(Ey[i]), creal(Ez[i]),
+    creal(Hx[i]), creal(Hy[i]), creal(Hz[i]));
+
+  printf("J(%lf,%lf,%lf) M(%lf,%lf,%lf)%\n ",
+         creal(Jx[i]), creal(Jy[i]), creal(Jz[i]),
+         creal(Bx[i]), creal(By[i]), creal(Bz[i]));*/
+}
+
 //Update
 static void update(void)
 {
+  SubFieldInfo_S sInfo = field_getSubFieldInfo_S();
+/*
+  //軸を描く為の処理
+  for(int i=1; i<sInfo.SUB_N_PY-1; i++)
+  {
+    int indexX = field_subIndex(i, sInfo.SUB_N_PY/2, sInfo.SUB_N_PZ/2);
+    int indexY = field_subIndex(sInfo.SUB_N_PX/2, i,  sInfo.SUB_N_PZ/2);
+    int indexZ = field_subIndex(sInfo.SUB_N_PX/2, sInfo.SUB_N_PY/2, i);
+    Ez[indexZ] = 1.0;
+  }
+  return;
+*/
+  
   calcJD();
+  if( debugCheck(Jz) )
+  {
+    STOP("Jz\n");
+  }
+  if( debugCheck(Jx) )
+  {
+    STOP("Jx\n");
+  }
+  if( debugCheck(Jy) )
+  {
+    STOP("Jy\n");
+  }
   calcE();
-  scatteredWave(Ez, EPS_EZ);
-//  MPI_Barrier(MPI_COMM_WORLD);  
-  //Connection_SendRecvE();
-//  Connection_ISend_IRecvE();
+  int i = field_subIndex(sInfo.SUB_N_PX/2, sInfo.SUB_N_PY/2, sInfo.SUB_N_PZ/2);
+  dcomplex wave = 10.0*field_getRayCoef()*cexp(-I*field_getOmega()*field_getTime());
+  Ez[i] += wave;
+
   calcMB();
+  if( debugCheck(My) )
+  {
+    STOP("My\n");
+  }
+  if( debugCheck(Mx) )
+  {
+    STOP("Mx\n");
+  }  
+  if( debugCheck(Mz) )
+  {
+    STOP("Mz\n");
+  }
+
   calcH();
-//  Connection_ISend_IRecvH();
-  //Connection_SendRecvH();
+  // Hz[i] += wave;
+
+  debugPrint();
+  //scatteredWave(Ez, EPS_EZ);
 }
 
 //calculate J and D
 static  void calcJD()
 {
-  int i,j,k;
-  for(i=1; i<SUB_N_PX-1; i++)
-    for(j=1; j<SUB_N_PY-1; j++)
-      for(k=1; j<SUB_N_PZ-1; k++)
+  SubFieldInfo_S sInfo = field_getSubFieldInfo_S();
+
+  for(int i=1; i<sInfo.SUB_N_PX-1; i++)
+    for(int j=1; j<sInfo.SUB_N_PY-1; j++)
+      for(int k=1; k<sInfo.SUB_N_PZ-1; k++)        
       {
-        const int w = subInd(i,j,k);
-        const int w_lft = subIndLeft(w);    //一つ左
-        const int w_btm = subIndBottom(w);  //一つ下
-        const int w_bck = subIndBack(w);
+        const int w = field_subIndex(i,j,k);
+        const int w_lft = field_subLeft(w);   //一つ左
+        const int w_btm = field_subBottom(w); //一つ下
+        const int w_frt = field_subFront(w);  //todo
+        const int w_bck = field_subBack(w);  //todo
         const dcomplex nowJx = Jx[w];
-        const dcomplex nowJy = Jy[k];
+        const dcomplex nowJy = Jy[w];
         const dcomplex nowJz = Jz[w];
 
-        Jx[w] = C_JX[w]*Jx[w] + C_JXHYHZ[w]*(Hz[w]-Hz[w_btm] -Hy[w_bck]+Hy[w]);
+        Jx[w] = C_JX[w]*Jx[w] + C_JXHYHZ[w]*(Hz[w]-Hz[w_btm] -Hy[w_frt]+Hy[w]);
         Dx[w] = C_DX[w]*Dx[w] + C_DXJX1[w]*Jx[w] - C_DXJX0[w]*nowJx;
         
-        Jy[w] = C_JY[w]*Jy[w] + C_JYHXHZ[w]*(Hx[w_bck]-Hx[w] -Hz[w]+Hz[w_lft] );
+        Jy[w] = C_JY[w]*Jy[w] + C_JYHXHZ[w]*( Hx[w_frt]-Hx[w] -Hz[w]+Hz[w_lft] );
         Dy[w] = C_DY[w]*Dy[w] + C_DYJY1[w]*Jy[w] - C_DYJY0[w]*nowJy;
 
         Jz[w] = C_JZ[w]*Jz[w] + C_JZHXHY[w]*(+Hy[w] - Hy[w_lft] -Hx[w]+Hx[w_btm]);
@@ -223,41 +333,44 @@ static  void calcJD()
 //calculate E 
 static void calcE()
 {
-  int i,j,k;
-  for(i=1; i<SUB_N_PX-1; i++)
-    for(j=1; j<SUB_N_PY-1; j++)
-      for(k=1; k<SUB_N_PZ-1; k++)
+  SubFieldInfo_S sInfo = field_getSubFieldInfo_S();
+  for(int i=1; i<sInfo.SUB_N_PX-1; i++)
+    for(int j=1; j<sInfo.SUB_N_PY-1; j++)
+      for(int k=1; k<sInfo.SUB_N_PZ-1; k++)
       {
-        const int w = subInd(i,j,k);
+        const int w = field_subIndex(i,j,k);
         Ex[w] = Dx[w]/EPS_EX[w];
         Ey[w] = Dy[w]/EPS_EY[w];
         Ez[w] = Dz[w]/EPS_EZ[w];
-      } 
+      }
 }
 
 //calculate M and B
 static void calcMB()
 {
-  int i,j,k;
-  for(i=1; i<SUB_N_PX-1; i++)
-    for(j=1; j<SUB_N_PY-1; j++)
-      for(k=1; j<SUB_N_PZ-1; k++)
+  SubFieldInfo_S sInfo = field_getSubFieldInfo_S();
+
+  for(int i=1; i<sInfo.SUB_N_PX-1; i++)
+    for(int j=1; j<sInfo.SUB_N_PY-1; j++)
+      for(int k=1; k<sInfo.SUB_N_PZ-1; k++)
       {
-        const int w = subInd(i,j,w);
-        const int w_rht = subIndRight(w);
-        const int w_top = subIndTop(w); //一つ上
-        const int w_frt = subIndFront(w);
+        const int w     = field_subIndex(i,j,k);
+        const int w_rht = field_subRight(w);
+        const int w_top = field_subTop(w);   //一つ上
+        const int w_bck = field_subBack(w);  //1つ前
+        const int w_frt = field_subFront(w);  //1つ前
+        
         const dcomplex nowMx = Mx[w];
         const dcomplex nowMy = My[w];
         const dcomplex nowMz = Mz[w];
-      
-        Mx[w] = C_MX[w]*Mx[w] - C_MXEYEZ[w]*(Ez[w_top]-Ez[w] -Ey[w]+Ey[w_frt]);
+    
+        Mx[w] = C_MX[w]*Mx[w] - C_MXEYEZ[w]*(Ez[w_top]-Ez[w] -Ey[w_frt]+Ey[w]); //原因
         Bx[w] = C_BX[w]*Bx[w] + C_BXMX1[w]*Mx[w] - C_BXMX0[w]*nowMx;
       
-        My[w] = C_MY[w]*My[w] - C_MYEXEZ[w]*(Ex[w]-Ex[w_frt] -Ez[w_rht]+Ez[w]);
+        My[w] = C_MY[w]*My[w] - C_MYEXEZ[w]*( Ex[w_frt]-Ex[w] -Ez[w_rht]+Ez[w]); //原因
         By[w] = C_BY[w]*By[w] + C_BYMY1[w]*My[w] - C_BYMY0[w]*nowMy;
-
-        Mz[w] = C_MZ[w]*Mz[w] - C_MZEXEY[w]*(Ey[w_rht]-Ey[w] -Ex[w_top]+Ex[w]);
+        
+        Mz[w] = C_MZ[w]*Mz[w] - C_MZEXEY[w]*( Ey[w_rht]-Ey[w] -Ex[w_top]+Ex[w] );
         Bz[w] = C_BZ[w]*Bz[w] + C_BZMZ1[w]*Mz[w] - C_BZMZ0[w]*nowMz;
       }
 }
@@ -265,12 +378,12 @@ static void calcMB()
 //calculate H
 static void calcH()
 {
-  int i,j,k;
-  for(i=1; i<SUB_N_PX-1; i++)
-    for(j=1; j<SUB_N_PY-1; j++)
-      for(k=1; j<SUB_N_PZ-1; k++)
+  SubFieldInfo_S sInfo = field_getSubFieldInfo_S();
+  for(int i=1; i<sInfo.SUB_N_PX-1; i++)
+    for(int j=1; j<sInfo.SUB_N_PY-1; j++)
+      for(int k=1; k<sInfo.SUB_N_PZ-1; k++)
       {
-        const int w = subInd(i,j,k);
+        const int w = field_subIndex(i,j,k);
         Hx[w] = Bx[w]/MU_0_S;
         Hy[w] = By[w]/MU_0_S;
         Hz[w] = Bz[w]/MU_0_S;
@@ -279,7 +392,6 @@ static void calcH()
 
 //-----------------memory allocate-------------//
 static void init(){
-  initMpi();
   allocateMemories();
   setCoefficient();
 }
@@ -287,143 +399,109 @@ static void init(){
 static void reset()
 {
 }
-static void initMpi()
-{
-  MPI_Comm_size(MPI_COMM_WORLD, &nproc);
-  int dim = 3;          //number of dimension is 2
-  int procs[3] = {0,0,0};       //[0]: x方向の分割数, [1]:y方向の分割数, [2]:z方向の分割数
-  int period[3] = {0,0,0};//境界条件, 固定境界
-  MPI_Comm grid_comm;
-  int reorder = 1;   //re-distribute rank flag
-
-  MPI_Dims_create(nproc, dim, procs);
-  MPI_Cart_create(MPI_COMM_WORLD, dim, procs, period, reorder, &grid_comm);
-  MPI_Cart_shift(grid_comm, 0, 1, &ltRank, &rtRank);
-  MPI_Cart_shift(grid_comm, 1, 1, &bmRank, &tpRank);
-
-  //プロセス座標において自分がどの位置に居るのか求める(何行何列に居るか)
-  int coordinates[2];
-  MPI_Comm_rank(grid_comm, &rank);
-  MPI_Cart_coords(grid_comm, rank, 2, coordinates);
-  
-  SUB_N_X = N_PX / procs[0];
-  SUB_N_Y = N_PY / procs[1];
-  SUB_N_Z = N_PZ / procs[1];
-  
-  SUB_N_PX = SUB_N_X + 2; //のりしろの分2大きい
-  SUB_N_PY = SUB_N_Y + 2; //のりしろの分2大きい
-  SUB_N_PZ = SUB_N_Z + 2; //のりしろの分2大きい
-  SUB_N_CELL = SUB_N_PX*SUB_N_PY*SUB_N_PZ;
-  
-  offsetX = coordinates[0] * SUB_N_X; //ランクのインデックスではなく, セル単位のオフセットなのでSUB_N_Xずれる
-  offsetY = coordinates[1] * SUB_N_Y;
-  offsetY = coordinates[1] * SUB_N_Z;
-  
-/*これだと, 1個のデータをSUB_N_PY跳び(次のデータまでSUB_N_PY-1個隙間がある),SUB_N_X行ぶん取ってくる事になる */
-  //todo 
-  MPI_Type_vector(SUB_N_X, 1, SUB_N_PY, MPI_C_DOUBLE_COMPLEX, &X_DIRECTION_DOUBLE_COMPLEX); 
-  MPI_Type_commit(&X_DIRECTION_DOUBLE_COMPLEX);
-}
 
 static void allocateMemories()
 {
-  Ex = newDComplex(SUB_N_CELL);   //Ex(i+0.5,j    ,k+0.5) -> Ex[i,j,k]
-  Ey = newDComplex(SUB_N_CELL);   //Ey(i    ,j+0.5,k+0.5) -> Ey[i,j,k]
-  Ez = newDComplex(SUB_N_CELL);   //Ez(i    ,j    ,k    ) -> Ez[i,j,k]
+  SubFieldInfo_S sInfo = field_getSubFieldInfo_S();
   
-  Jx = newDComplex(SUB_N_CELL);
-  Jy = newDComplex(SUB_N_CELL);
-  Jz = newDComplex(SUB_N_CELL);
+  Ex = newDComplex(sInfo.SUB_N_CELL);   //Ex(i+0.5,j    ,k+0.5) -> Ex[i,j,k]
+  Ey = newDComplex(sInfo.SUB_N_CELL);   //Ey(i    ,j+0.5,k+0.5) -> Ey[i,j,k]
+  Ez = newDComplex(sInfo.SUB_N_CELL);   //Ez(i    ,j    ,k    ) -> Ez[i,j,k]
   
-  Dx = newDComplex(SUB_N_CELL);
-  Dy = newDComplex(SUB_N_CELL);
-  Dz = newDComplex(SUB_N_CELL);
+  Jx = newDComplex(sInfo.SUB_N_CELL);
+  Jy = newDComplex(sInfo.SUB_N_CELL);
+  Jz = newDComplex(sInfo.SUB_N_CELL);
   
-  Hx = newDComplex(SUB_N_CELL);  //Hx(i    , j+0.5, k    )->Hx[i,j,k]
-  Hy = newDComplex(SUB_N_CELL);  //Hy(i+0.5, j    , k    )->Hy[i,j,k]
-  Hz = newDComplex(SUB_N_CELL);  //Hz(i+0.5, j+0.5, k+0.5)->Hz[i,j,k]
+  Dx = newDComplex(sInfo.SUB_N_CELL);
+  Dy = newDComplex(sInfo.SUB_N_CELL);
+  Dz = newDComplex(sInfo.SUB_N_CELL);
   
-  Mx = newDComplex(SUB_N_CELL);
-  My = newDComplex(SUB_N_CELL);
-  Mz = newDComplex(SUB_N_CELL);
+  Hx = newDComplex(sInfo.SUB_N_CELL);  //Hx(i    , j+0.5, k    )->Hx[i,j,k]
+  Hy = newDComplex(sInfo.SUB_N_CELL);  //Hy(i+0.5, j    , k    )->Hy[i,j,k]
+  Hz = newDComplex(sInfo.SUB_N_CELL);  //Hz(i+0.5, j+0.5, k+0.5)->Hz[i,j,k]
   
-  Bx = newDComplex(SUB_N_CELL);
-  By = newDComplex(SUB_N_CELL);
-  Bz = newDComplex(SUB_N_CELL);
+  Mx = newDComplex(sInfo.SUB_N_CELL);
+  My = newDComplex(sInfo.SUB_N_CELL);
+  Mz = newDComplex(sInfo.SUB_N_CELL);
+  
+  Bx = newDComplex(sInfo.SUB_N_CELL);
+  By = newDComplex(sInfo.SUB_N_CELL);
+  Bz = newDComplex(sInfo.SUB_N_CELL);
 
-  C_JX = newDouble(SUB_N_CELL);
-  C_JY = newDouble(SUB_N_CELL);
-  C_JZ = newDouble(SUB_N_CELL);
+  C_JX = newDouble(sInfo.SUB_N_CELL);
+  C_JY = newDouble(sInfo.SUB_N_CELL);
+  C_JZ = newDouble(sInfo.SUB_N_CELL);
   
-  C_MX = newDouble(SUB_N_CELL);
-  C_MY = newDouble(SUB_N_CELL);
-  C_MZ = newDouble(SUB_N_CELL);
+  C_MX = newDouble(sInfo.SUB_N_CELL);
+  C_MY = newDouble(sInfo.SUB_N_CELL);
+  C_MZ = newDouble(sInfo.SUB_N_CELL);
 
-  C_DX = newDouble(SUB_N_CELL);
-  C_DY = newDouble(SUB_N_CELL);
-  C_DZ = newDouble(SUB_N_CELL);
+  C_DX = newDouble(sInfo.SUB_N_CELL);
+  C_DY = newDouble(sInfo.SUB_N_CELL);
+  C_DZ = newDouble(sInfo.SUB_N_CELL);
   
-  C_BX = newDouble(SUB_N_CELL);
-  C_BY = newDouble(SUB_N_CELL);
-  C_BZ = newDouble(SUB_N_CELL);
+  C_BX = newDouble(sInfo.SUB_N_CELL);
+  C_BY = newDouble(sInfo.SUB_N_CELL);
+  C_BZ = newDouble(sInfo.SUB_N_CELL);
 
-  C_JXHYHZ = newDouble(SUB_N_CELL);
-  C_JYHXHZ = newDouble(SUB_N_CELL);
-  C_JZHXHY = newDouble(SUB_N_CELL);
+  C_JXHYHZ = newDouble(sInfo.SUB_N_CELL);
+  C_JYHXHZ = newDouble(sInfo.SUB_N_CELL);
+  C_JZHXHY = newDouble(sInfo.SUB_N_CELL);
   
-  C_MXEYEZ = newDouble(SUB_N_CELL);
-  C_MYEXEZ = newDouble(SUB_N_CELL);
-  C_MZEXEY = newDouble(SUB_N_CELL);
+  C_MXEYEZ = newDouble(sInfo.SUB_N_CELL);
+  C_MYEXEZ = newDouble(sInfo.SUB_N_CELL);
+  C_MZEXEY = newDouble(sInfo.SUB_N_CELL);
   
-  C_DXJX0 = newDouble(SUB_N_CELL);
-  C_DXJX1 = newDouble(SUB_N_CELL);
-  C_DYJY0 = newDouble(SUB_N_CELL);
-  C_DYJY1 = newDouble(SUB_N_CELL);
-  C_DZJZ0 = newDouble(SUB_N_CELL);
-  C_DZJZ1 = newDouble(SUB_N_CELL);
+  C_DXJX0 = newDouble(sInfo.SUB_N_CELL);
+  C_DXJX1 = newDouble(sInfo.SUB_N_CELL);
+  C_DYJY0 = newDouble(sInfo.SUB_N_CELL);
+  C_DYJY1 = newDouble(sInfo.SUB_N_CELL);
+  C_DZJZ0 = newDouble(sInfo.SUB_N_CELL);
+  C_DZJZ1 = newDouble(sInfo.SUB_N_CELL);
 
-  C_BXMX1 = newDouble(SUB_N_CELL);
-  C_BXMX0 = newDouble(SUB_N_CELL);
-  C_BYMY1 = newDouble(SUB_N_CELL);
-  C_BYMY0 = newDouble(SUB_N_CELL);
-  C_BZMZ0 = newDouble(SUB_N_CELL);
-  C_BZMZ1 = newDouble(SUB_N_CELL);
+  C_BXMX1 = newDouble(sInfo.SUB_N_CELL);
+  C_BXMX0 = newDouble(sInfo.SUB_N_CELL);
+  C_BYMY1 = newDouble(sInfo.SUB_N_CELL);
+  C_BYMY0 = newDouble(sInfo.SUB_N_CELL);
+  C_BZMZ0 = newDouble(sInfo.SUB_N_CELL);
+  C_BZMZ1 = newDouble(sInfo.SUB_N_CELL);
 
-  EPS_EX = newDouble(SUB_N_CELL);
-  EPS_EY = newDouble(SUB_N_CELL);
-  EPS_EZ = newDouble(SUB_N_CELL);
+  EPS_EX = newDouble(sInfo.SUB_N_CELL);
+  EPS_EY = newDouble(sInfo.SUB_N_CELL);
+  EPS_EZ = newDouble(sInfo.SUB_N_CELL);
 
-  EPS_HY = newDouble(SUB_N_CELL);
-  EPS_HX = newDouble(SUB_N_CELL);
-  EPS_HZ = newDouble(SUB_N_CELL);
+  EPS_HY = newDouble(sInfo.SUB_N_CELL);
+  EPS_HX = newDouble(sInfo.SUB_N_CELL);
+  EPS_HZ = newDouble(sInfo.SUB_N_CELL);
 
 }
 
 static void initializeElectroMagneticField()
 {
-  memset(Ex, 0, sizeof(dcomplex)*SUB_N_CELL);
-  memset(Ey, 0, sizeof(dcomplex)*SUB_N_CELL);
-  memset(Ez, 0, sizeof(dcomplex)*SUB_N_CELL);
+  SubFieldInfo_S sInfo = field_getSubFieldInfo_S();
+  memset(Ex, 0, sizeof(dcomplex)*sInfo.SUB_N_CELL);
+  memset(Ey, 0, sizeof(dcomplex)*sInfo.SUB_N_CELL);
+  memset(Ez, 0, sizeof(dcomplex)*sInfo.SUB_N_CELL);
 
-  memset(Hx, 0, sizeof(dcomplex)*SUB_N_CELL);
-  memset(Hy, 0, sizeof(dcomplex)*SUB_N_CELL);
-  memset(Hz, 0, sizeof(dcomplex)*SUB_N_CELL);
+  memset(Hx, 0, sizeof(dcomplex)*sInfo.SUB_N_CELL);
+  memset(Hy, 0, sizeof(dcomplex)*sInfo.SUB_N_CELL);
+  memset(Hz, 0, sizeof(dcomplex)*sInfo.SUB_N_CELL);
 
-  memset(Jx, 0, sizeof(dcomplex)*SUB_N_CELL);
-  memset(Jy, 0, sizeof(dcomplex)*SUB_N_CELL);
-  memset(Jz, 0, sizeof(dcomplex)*SUB_N_CELL);
+  memset(Jx, 0, sizeof(dcomplex)*sInfo.SUB_N_CELL);
+  memset(Jy, 0, sizeof(dcomplex)*sInfo.SUB_N_CELL);
+  memset(Jz, 0, sizeof(dcomplex)*sInfo.SUB_N_CELL);
   
-  memset(Mx, 0, sizeof(dcomplex)*SUB_N_CELL);
-  memset(My, 0, sizeof(dcomplex)*SUB_N_CELL);
-  memset(Mz, 0, sizeof(dcomplex)*SUB_N_CELL);
+  memset(Mx, 0, sizeof(dcomplex)*sInfo.SUB_N_CELL);
+  memset(My, 0, sizeof(dcomplex)*sInfo.SUB_N_CELL);
+  memset(Mz, 0, sizeof(dcomplex)*sInfo.SUB_N_CELL);
 
-  memset(Dz, 0, sizeof(dcomplex)*SUB_N_CELL);
-  memset(Dx, 0, sizeof(dcomplex)*SUB_N_CELL);
-  memset(Dy, 0, sizeof(dcomplex)*SUB_N_CELL);
+  memset(Dz, 0, sizeof(dcomplex)*sInfo.SUB_N_CELL);
+  memset(Dx, 0, sizeof(dcomplex)*sInfo.SUB_N_CELL);
+  memset(Dy, 0, sizeof(dcomplex)*sInfo.SUB_N_CELL);
 
-  memset(Bx, 0, sizeof(dcomplex)*SUB_N_CELL);
-  memset(By, 0, sizeof(dcomplex)*SUB_N_CELL);
-  memset(Bz, 0, sizeof(dcomplex)*SUB_N_CELL);    
+  memset(Bx, 0, sizeof(dcomplex)*sInfo.SUB_N_CELL);
+  memset(By, 0, sizeof(dcomplex)*sInfo.SUB_N_CELL);
+  memset(Bz, 0, sizeof(dcomplex)*sInfo.SUB_N_CELL);    
 }
 
 static void setCoefficient()
@@ -438,24 +516,25 @@ static void setCoefficient()
   double R = 1.0e-8;
   double M = 2.0;
   
-  const double sig_max = -(M+1.0)*EPSILON_0_S*LIGHT_SPEED_S/2.0/N_PML*log(R);
+  SubFieldInfo_S sInfo = field_getSubFieldInfo_S();
+  FieldInfo_S fInfo_s = field_getFieldInfo_S();
+  const double sig_max = -(M+1.0)*EPSILON_0_S*C_0_S/2.0/fInfo_s.N_PML*log(R);
 
-  int i,j,k;
-  for(i=1; i<SUB_N_PX-1; i++)
-    for(j=1; j<SUB_N_PY-1; j++)
-      for(k=1; k<SUB_N_PZ; j++)
+  for(int i=1; i<sInfo.SUB_N_PX-1; i++)
+    for(int j=1; j<sInfo.SUB_N_PY-1; j++)
+      for(int k=1; k<sInfo.SUB_N_PZ-1; k++)
       {
-        int w = subInd(i,j,k);
-        int x = i-1+offsetX;
-        int y = j-1+offsetY;
-        int z = z-1+offsetZ;
-        EPS_EX[k] = models_eps(x+0.5,y    ,z+0.5,D_Y);
-        EPS_EY[k] = models_eps(x    ,y+0.5,z+0.5,D_X);
-        EPS_EZ[k] = models_eps(x    ,y    ,z    ,D_XY);
+        int w = field_subIndex(i,j,k);
+        int x = i-1+sInfo.OFFSET_X;
+        int y = j-1+sInfo.OFFSET_Y;
+        int z = k-1+sInfo.OFFSET_Z;
+        EPS_EX[w] = models_eps(x+0.5,y    ,z+0.5,D_Y); //todo 
+        EPS_EY[w] = models_eps(x    ,y+0.5,z+0.5,D_X);
+        EPS_EZ[w] = models_eps(x    ,y    ,z    ,D_XY);
 
-        EPS_HX[k] = models_eps(x    ,y+0.5,z    ,D_Y);
-        EPS_HY[k] = models_eps(x+0.5,y    ,z    ,D_X);
-        EPS_HZ[k] = 0.5*(models_eps(x+0.5,y+0.5,z+0.5, D_X) + models_eps(x+0.5,y+0.5,z+0.5, D_Y));
+        EPS_HX[w] = models_eps(x    ,y+0.5,z    ,D_Y);
+        EPS_HY[w] = models_eps(x+0.5,y    ,z    ,D_X);
+        EPS_HZ[w] = 0.5*(models_eps(x+0.5,y+0.5,z+0.5, D_X) + models_eps(x+0.5,y+0.5,z+0.5, D_Y));
 
         sig_ex_x = sig_max*field_sigmaX(x+0.5,y    ,z+0.5);
         sig_ex_y = sig_max*field_sigmaY(x+0.5,y    ,z+0.5);
@@ -502,7 +581,7 @@ static void setCoefficient()
         C_DZJZ0[w] = (2*eps - sig_ez_z) / (2*eps + sig_ez_y);
         
         C_MX[w]    = (2*eps - sig_hx_y) / (2*eps + sig_hx_y);
-        C_MXEYEZ[w]  = (2*eps)            / (2*eps + sig_hx_y);
+        C_MXEYEZ[w]= (2*eps)            / (2*eps + sig_hx_y);
         C_BX[w]    = (2*eps - sig_hx_z) / (2*eps + sig_hx_z);
         C_BXMX1[w] = (2*eps + sig_hx_x) / (2*eps + sig_hx_z);
         C_BXMX0[w] = (2*eps - sig_hx_x) / (2*eps + sig_hx_z);

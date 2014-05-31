@@ -8,15 +8,6 @@
 #include "models.h"
 #include "function.h"
 
-int N_X;
-int N_Y;
-int N_Z;
-int N_CELL;
-int N_PML;
-int N_PX;
-int N_PY;
-int N_PZ;
-
 FieldInfo fieldInfo;
 FieldInfo_S fieldInfo_s;
 SubFieldInfo_S subFieldInfo_s;
@@ -56,11 +47,11 @@ static void mpiSplit(void);
 
 //:public------------------------------------//
  double field_toCellUnit(const double phisycalUnit){
-  return phisycalUnit/H_u;   //セル単位に変換 
+  return phisycalUnit/fieldInfo.h_u_nm;   //セル単位に変換 
 }
 
  double field_toPhisycalUnit(const double cellUnit){
-  return cellUnit*H_u;    //物理単位(nm)に変換
+  return cellUnit*fieldInfo.h_u_nm;    //物理単位(nm)に変換
 }
 
 int field_getOffsetX(){  return subFieldInfo_s.OFFSET_X;}
@@ -86,6 +77,31 @@ int field_subIndex(int i, int j, int k){
 
 int field_index(int i, int j, int k){
     return i*fieldInfo_s.N_PYZ + j*fieldInfo_s.N_PZ+k;
+}
+
+int field_subLeft(int ind)
+{
+  return ind - subFieldInfo_s.SUB_N_PYZ;
+}
+int field_subRight(int ind)
+{
+  return ind + subFieldInfo_s.SUB_N_PYZ;
+}
+int field_subTop(int ind)
+{
+  return ind + subFieldInfo_s.SUB_N_PZ;
+}
+int field_subBottom(int ind)
+{
+  return ind - subFieldInfo_s.SUB_N_PZ;
+}
+int field_subFront(int ind)
+{
+  return ind+1;
+}
+int field_subBack(int ind)
+{
+  return ind-1;
 }
 
 void field_init(FieldInfo field_info)
@@ -120,19 +136,18 @@ void field_init(FieldInfo field_info)
   ray_coef  = 0;
   
   /* NTFF設定 */
-  ntff_info.cx     = N_PX/2;
-  ntff_info.cy     = N_PY/2;
-  ntff_info.cz     = N_PY/2;
-  ntff_info.top    = N_PY - N_PML - 5;
-  ntff_info.bottom = N_PML + 5;
-  ntff_info.left   = N_PML + 5;
-  ntff_info.right  = N_PX - N_PML - 5;
-  ntff_info.front  = N_PML + 5;
-  ntff_info.back   = N_PZ - N_PML - 5;
+  ntff_info.cx     = fieldInfo_s.N_PX/2;
+  ntff_info.cy     = fieldInfo_s.N_PY/2;
+  ntff_info.cz     = fieldInfo_s.N_PY/2;
+  ntff_info.top    = fieldInfo_s.N_PY - fieldInfo_s.N_PML - 5;
+  ntff_info.bottom = fieldInfo_s.N_PML + 5;
+  ntff_info.left   = fieldInfo_s.N_PML + 5;
+  ntff_info.right  = fieldInfo_s.N_PX - fieldInfo_s.N_PML - 5;
+  ntff_info.front  = fieldInfo_s.N_PML + 5;
+  ntff_info.back   = fieldInfo_s.N_PZ - fieldInfo_s.N_PML - 5;
 
   // todo
-  NOT_DONE("you have to check RFperC in 3D");
-  
+//  NOT_DONE("you have to check RFperC in 3D\n");
   double len = (ntff_info.top - ntff_info.bottom)/2;
   ntff_info.RFperC = len*2;
   ntff_info.arraySize = maxTime + 2*ntff_info.RFperC;
@@ -180,43 +195,43 @@ NTFFInfo  field_getNTFFInfo()
 }
 
 //----------------------------------------//
- double field_sigmaX(const double x, const double y, const double z)
+ double field_sigmaX(const double x, const double __y, const double __z)
 {
   const int M = 2;
-  if(x<N_PML)
-    return pow(1.0*(N_PML-x)/N_PML, M);
+  if(x<fieldInfo_s.N_PML)
+    return pow(1.0*(fieldInfo_s.N_PML-x)/fieldInfo_s.N_PML, M);
   
-  else if(N_PML <= x && x < (N_X+N_PML))    
+  else if(fieldInfo_s.N_PML <= x && x < (fieldInfo_s.N_X+fieldInfo_s.N_PML))    
     return 0;
   
   else
-    return pow(1.0*(x - (N_PX-N_PML-1))/N_PML, M);
+    return pow(1.0*(x - (fieldInfo_s.N_PX-fieldInfo_s.N_PML-1))/fieldInfo_s.N_PML, M);
 }
 
- double field_sigmaY(const double x, const double y, const double z)
+ double field_sigmaY(const double __x, const double y, const double __z)
 {
   const int M = 2;
-  if(y<N_PML)
-    return pow(1.0*(N_PML - y)/N_PML,M);
+  if(y<fieldInfo_s.N_PML)
+    return pow(1.0*(fieldInfo_s.N_PML - y)/fieldInfo_s.N_PML,M);
   
-  else if(y>=N_PML && y<(N_Y+N_PML))
+  else if(y>=fieldInfo_s.N_PML && y<(fieldInfo_s.N_Y+fieldInfo_s.N_PML))
     return 0.0;
 
   else
-    return pow(1.0*(y - (N_PY-N_PML-1))/N_PML,M);
+    return pow(1.0*(y - (fieldInfo_s.N_PY-fieldInfo_s.N_PML-1))/fieldInfo_s.N_PML,M);
 }
 
-double field_sigmaZ(const double x, const double y, const double z)
+double field_sigmaZ(const double __x, const double __y, const double z)
 {
   const int M = 2;
-  if(z<N_PML)
-    return pow(1.0*(N_PML-z)/N_PML, M);
+  if(z<fieldInfo_s.N_PML)
+    return pow(1.0*(fieldInfo_s.N_PML-z)/fieldInfo_s.N_PML, M);
   
-  else if( z>=N_PML && z<(N_Z+N_PML))
+  else if( z>=fieldInfo_s.N_PML && z<(fieldInfo_s.N_Z+fieldInfo_s.N_PML))
     return 0.0;
   
   else
-    return pow(1.0*(z - (N_PZ-N_PML-1))/N_PML,M);
+    return pow(1.0*(z - (fieldInfo_s.N_PZ-fieldInfo_s.N_PML-1))/fieldInfo_s.N_PML,M);
 }
 
 //------------------getter-------------------------//
@@ -252,8 +267,8 @@ static void mpiSplit(void)
   MPI_Cart_shift(grid_comm, 0, 1, &subFieldInfo_s.LtRank, &subFieldInfo_s.RtRank); //x方向の隣
   MPI_Cart_shift(grid_comm, 1, 1, &subFieldInfo_s.BmRank, &subFieldInfo_s.TpRank); //y方向
 
-  NOT_DONE("field.c check the order of FtRank and BkRank ");
-  MPI_Cart_shift(grid_comm, 2, 1, &subFieldInfo_s.FtRank, &subFieldInfo_s.BkRank); //z方向 todo 逆かもしれない
+//  NOT_DONE("field.c check the order of FtRank and BkRank ");
+  MPI_Cart_shift(grid_comm, 2, 1, &subFieldInfo_s.BkRank, &subFieldInfo_s.FtRank); //z方向 todo 逆かもしれない
 
   //プロセス座標において自分がどの位置に居るのか求める(何行何列に居るか)
   int coordinates[3];
