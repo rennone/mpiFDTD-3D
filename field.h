@@ -4,6 +4,11 @@
 #include "myComplex.h"
 #include "bool.h"
 #include <mpi.h>
+#include <math.h>
+
+#ifndef M_PI
+#define M_PI 3.1415926535897932384626433832795
+#endif
 
 //各面の同期をとるための型
 extern MPI_Datatype MPI_DCOMPLEX_XY_PLANE, MPI_DCOMPLEX_YZ_PLANE, MPI_DCOMPLEX_XZ_PLANE;

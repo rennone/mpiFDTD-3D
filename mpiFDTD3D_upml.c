@@ -244,7 +244,7 @@ static void update(void)
   calcMBH();
   Connection_SendRecvH();
   calcJDE();
-//  scatteredWave(Ez, EPS_EZ, 0.5, 0.5, 0.0);
+  scatteredWave(Ez, EPS_EZ, 0.5, 0.5, 0.0);
   Connection_SendRecvE();  
 }
 
