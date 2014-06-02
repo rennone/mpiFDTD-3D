@@ -17,10 +17,13 @@ static MPI_Datatype DCOMPLEX_XY; //XY平面
 static MPI_Datatype DCOMPLEX_YZ; //YZ平面
 static MPI_Datatype DCOMPLEX_XZ; //XZ平面
 
+//岡田さんの論文と同じ空間配置にしてみる=>遠方解の時の補完が楽になりそう
+//h = 1, Δt = 1で計算
 //系は右手系
 //x(left-, right+)
 //y(bottom-, top+)
 //z(back-, front+)
+
 //Hx(i,j+0.5,k)         -> Hx[i,j,k]
 //Hy(i+0.5,j,k)         -> Hy[i,j,k]
 //Hz(i+0.5,j+0.5,k+0.5) -> Hz[i,j,k]
@@ -83,6 +86,12 @@ static void allocateMemories(void);
 static void setCoefficient(void);
 static void freeMemories(void);
 
+static void Connection_SendRecvE(void);
+static void Connection_SendRecvH(void);
+static void scatteredWave(dcomplex *p, double *eps, double gapX, double gapY, double gapZ);
+
+static void miePrint(void);
+
 static void initializeElectroMagneticField(void);
 
 dcomplex* mpi_fdtd3D_upml_getEx(void){  return Ex;}
@@ -107,14 +116,41 @@ void (* mpi_fdtd3D_upml_getInit(void))(void){
   return init;
 }
 
+static void init(){
+  allocateMemories();
+  setCoefficient();
+}
+
+static void finish(){
+  //output();
+  miePrint();
+  freeMemories();
+}
+
+static void reset()
+{
+}
+
+//Update
+static void update(void)
+{
+  SubFieldInfo_S sInfo = field_getSubFieldInfo_S();
+  calcMBH();
+  Connection_SendRecvH();
+  calcJDE();
+  scatteredWave(Ez, EPS_EZ, 0.5, 0.5, 0.0);
+  Connection_SendRecvE();  
+}
+
 //単一波長の散乱波
 // gapX, gapY : Ex-z, Hx-zは格子点からずれた位置に配置され散る為,格子点からのずれを送る必要がある.
 // UPML専用
 static void scatteredWave(dcomplex *p, double *eps, double gapX, double gapY, double gapZ){
   double ray_coef = field_getRayCoef();  
   double k_s = field_getK();
-  double theta_rad = 0;//field_getTheta()*M_PI/180.0;
-  double phi_rad   = 0;//field_getPhi()*M_PI/180.0;  
+  double theta_rad = field_getTheta()*M_PI/180.0;
+  double phi_rad   = field_getPhi()*M_PI/180.0;
+
   double ks_cos_cos = cos(phi_rad)*cos(theta_rad)*k_s;
   double ks_cos_sin = cos(phi_rad)*sin(theta_rad)*k_s;
   double ks_sin     = sin(phi_rad)*k_s;
@@ -225,29 +261,6 @@ static void Connection_SendRecvH(void)
                &Hz[ftRecv], 1, MPI_DCOMPLEX_XY_PLANE, subInfo_s.FtRank, 1, MPI_COMM_WORLD, &status);
 }
 
-//Update
-static void update(void)
-{
-  SubFieldInfo_S sInfo = field_getSubFieldInfo_S();
-/*  
-//  for(int i=1; i<sInfo.SUB_N_PX-1; i++)
-    for(int j=1; j<sInfo.SUB_N_PY-1; j++)
-      for(int k=1; k<sInfo.SUB_N_PZ-1; k++)
-      {
-        int w = field_subIndex(1, j, k);
-        Ez[w] = Ey[w] = Ex[w] = Hx[w] = Hy[w] = Hz[w] = 1.0;
-      }
-    Connection_SendRecvH();
-  return;
-*/
-
-  calcMBH();
-  Connection_SendRecvH();
-  calcJDE();
-  scatteredWave(Ez, EPS_EZ, 0.5, 0.5, 0.0);
-  Connection_SendRecvE();  
-}
-
 //calculate J and D
 static  void calcJDE()
 {
@@ -332,14 +345,6 @@ static void calcMBH()
 }
 
 //-----------------memory allocate-------------//
-static void init(){
-  allocateMemories();
-  setCoefficient();
-}
-
-static void reset()
-{
-}
 
 static void allocateMemories()
 {
@@ -547,9 +552,49 @@ static void cpy(dcomplex *entire, dcomplex *region, int dx, int dy, int dz)
       }
 }
 
+//分割された領域をまとめる.
+static dcomplex* unifyToRank0(dcomplex *phi)
+{
+  SubFieldInfo_S subInfo_s = field_getSubFieldInfo_S();
+  FieldInfo_S fInfo_s = field_getFieldInfo_S();
+  //マスターにすべて集める
+  if(subInfo_s.Rank == 0)
+  {
+    MPI_Status status;
+    dcomplex *entire = newDComplex(fInfo_s.N_CELL);
+    cpy(entire, Ez, subInfo_s.OFFSET_X, subInfo_s.OFFSET_Y, subInfo_s.OFFSET_Z);
+
+    dcomplex *tmp = newDComplex(subInfo_s.SUB_N_CELL);
+    int offset[3];
+    for(int i=1; i<subInfo_s.Nproc; i++)
+    {
+      MPI_Recv(offset, 3, MPI_INT, i, 0, MPI_COMM_WORLD, &status);
+      MPI_Recv(tmp, subInfo_s.SUB_N_CELL, MPI_C_DOUBLE_COMPLEX, i, 1, MPI_COMM_WORLD, &status);
+      cpy(entire, tmp, offset[0], offset[1], offset[2]);      
+    }
+    free(tmp);
+    return entire;
+  } else {
+    int offset[3];
+    offset[0] = subInfo_s.OFFSET_X;
+    offset[1] = subInfo_s.OFFSET_Y;
+    offset[2] = subInfo_s.OFFSET_Z;
+    MPI_Send(offset, 3, MPI_INT, 0, 0, MPI_COMM_WORLD);
+    MPI_Send(Ez, subInfo_s.SUB_N_CELL, MPI_C_DOUBLE_COMPLEX, 0, 1, MPI_COMM_WORLD);
+    
+    return NULL; //マスター以外はNULLを返す.
+  }
+}
+
 //---------------------メモリの解放--------------------//
 static void miePrint()
 {
+  dcomplex *entire = unifyToRank0(Ez);
+  if( entire != NULL){
+    field_outputElliptic("Ez.txt",entire);
+    free(entire);
+  }
+  /*
   SubFieldInfo_S subInfo_s = field_getSubFieldInfo_S();
   FieldInfo_S fInfo_s = field_getFieldInfo_S();
   //マスターにすべて集める
@@ -576,13 +621,7 @@ static void miePrint()
     offset[2] = subInfo_s.OFFSET_Z;
     MPI_Send(offset, 3, MPI_INT, 0, 0, MPI_COMM_WORLD);
     MPI_Send(Ez, subInfo_s.SUB_N_CELL, MPI_C_DOUBLE_COMPLEX, 0, 1, MPI_COMM_WORLD);
-  }  
-}
-
-static void finish(){
-  //output();
-//  miePrint();
-  freeMemories();
+    }  */
 }
 
 static void freeMemories()

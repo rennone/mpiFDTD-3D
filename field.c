@@ -58,36 +58,48 @@ SubFieldInfo_S field_getSubFieldInfo_S() { return subFieldInfo_s;}
 FieldInfo_S field_getFieldInfo_S()       { return fieldInfo_s;}
 FieldInfo field_getFieldInfo()   { return fieldInfo;}
 
-int field_subIndex(int i, int j, int k){
-    return i*subFieldInfo_s.SUB_N_PYZ + j*subFieldInfo_s.SUB_N_PZ + k;
-}
 
 int field_index(int i, int j, int k){
     return i*fieldInfo_s.N_PYZ + j*fieldInfo_s.N_PZ+k;
 }
-
-int field_subLeft(int ind)
-{
-  return ind - subFieldInfo_s.SUB_N_PYZ;
+int field_left(int ind){
+  return ind - fieldInfo_s.N_PYZ;
 }
-int field_subRight(int ind)
-{
-  return ind + subFieldInfo_s.SUB_N_PYZ;
+int field_right(int ind){
+  return ind + fieldInfo_s.N_PYZ;
 }
-int field_subTop(int ind)
-{
-  return ind + subFieldInfo_s.SUB_N_PZ;
+int field_top(int ind){
+  return ind + fieldInfo_s.N_PZ;
 }
-int field_subBottom(int ind)
-{
-  return ind - subFieldInfo_s.SUB_N_PZ;
+int field_bottom(int ind){
+  return ind - fieldInfo_s.N_PZ;
 }
-int field_subFront(int ind)
-{
+int field_front(int ind){
   return ind+1;
 }
-int field_subBack(int ind)
-{
+int field_back(int ind){
+  return ind-1;
+}
+
+int field_subIndex(int i, int j, int k){
+    return i*subFieldInfo_s.SUB_N_PYZ + j*subFieldInfo_s.SUB_N_PZ + k;
+}
+int field_subLeft(int ind){
+  return ind - subFieldInfo_s.SUB_N_PYZ;
+}
+int field_subRight(int ind){
+  return ind + subFieldInfo_s.SUB_N_PYZ;
+}
+int field_subTop(int ind){
+  return ind + subFieldInfo_s.SUB_N_PZ;
+}
+int field_subBottom(int ind){
+  return ind - subFieldInfo_s.SUB_N_PZ;
+}
+int field_subFront(int ind){
+  return ind+1;
+}
+int field_subBack(int ind){
   return ind-1;
 }
 
@@ -130,8 +142,9 @@ void field_init(FieldInfo field_info)
   ntff_info.bottom = fieldInfo_s.N_PML + 5;
   ntff_info.left   = fieldInfo_s.N_PML + 5;
   ntff_info.right  = fieldInfo_s.N_PX - fieldInfo_s.N_PML - 5;
-  ntff_info.front  = fieldInfo_s.N_PML + 5;
-  ntff_info.back   = fieldInfo_s.N_PZ - fieldInfo_s.N_PML - 5;
+  ntff_info.back   = fieldInfo_s.N_PML + 5;
+  ntff_info.front  = fieldInfo_s.N_PZ - fieldInfo_s.N_PML - 5;
+
 
   // todo
 //  NOT_DONE("you have to check RFperC in 3D\n");
@@ -152,6 +165,7 @@ double  field_getTime(){  return time;}
 double  field_getMaxTime(){  return maxTime;}
 
 NTFFInfo  field_getNTFFInfo(){  return ntff_info;}
+
 
 //----------------------------------------//
  double field_sigmaX(const double x, const double __y, const double __z)
@@ -205,7 +219,6 @@ double field_pmlCoef2(double ep_mu, double sig)
   return 1.0/(ep_mu + sig); // 1.0/{ep_mu(1.0 + sig/ep_mu)}と同じ
 }
 
-//------------------getter-------------------------//
 
 //------------------light method----------------------//
 //点光源を返す

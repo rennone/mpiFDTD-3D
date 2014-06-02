@@ -81,6 +81,13 @@ static const double MU_0_S = 4;//1.0/C_0_S/C_0_S;
 
 //インデックスを取ってくる 
 extern int field_index(const int, const int, const int);
+extern int field_left(int ind);
+extern int field_right(int ind);
+extern int field_top(int ind);
+extern int field_bottom(int ind);
+extern int field_front(int ind);
+extern int field_back(int ind);
+
 extern int field_subIndex(const int, const int, const int);
 extern int field_subLeft(int ind);
 extern int field_subRight(int ind);
@@ -106,6 +113,7 @@ extern double field_pmlCoef2(double x, double y);
 extern double field_toCellUnit(const double);
 extern double field_toPhisycalUnit(const double);
 
+
 //---------------入射波---------------
 extern double complex field_pointLight(void);
 
@@ -124,6 +132,8 @@ extern double field_getLambda(void);
 extern double field_getWaveAngle(void);
 extern double field_getTime(void);
 extern double field_getMaxTime(void);
+extern double field_getTheta(void);
+extern double field_getPhi(void);
 
 extern int field_getOffsetX();
 extern int field_getOffsetY();
