@@ -3,7 +3,7 @@
 
 enum MODEL{
   NO_MODEL,
-  MIE_CYLINDER,
+  MIE_SPHERE,
   SHELF,
   NONSHELF,
   LAYER

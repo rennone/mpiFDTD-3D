@@ -56,7 +56,7 @@ static double eps(double x, double y, double z, int col, int row, int dep)
   //さらに32*32分割し媒質内と媒質外の数を求めepsilonを決定する
   double sum=0;
 
-  NOT_DONE("i dont need its loop if flag(col row dep) is false\n");
+//  NOT_DONE("i dont need its loop if flag(col row dep) is false\n");
   for(int i=-16+0.5; i<16; i+=1)
     for(int j=-16+0.5; j<16; j+=1)
       for(int k=-16+0.5; k<16; k+=1)

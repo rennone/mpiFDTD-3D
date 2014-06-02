@@ -5,14 +5,15 @@
 #include "field.h"
 #include "drawer.h"
 #include "models.h"
+#include "mpiFDTD3D_upml.h"
 #include "mpiFDTD3D.h"
-#include "fdtd3D.h"
 #include <sys/time.h>
 
-
+/*
 static double complex* (*getDataX)() = NULL;
 static double complex* (*getDataY)() = NULL;
 static double complex* (*getDataZ)() = NULL;
+*/
 
 static void (*updateMethod)() = NULL;
 static void (* finishMethod)() = NULL;
@@ -22,7 +23,6 @@ static void (* resetMethod)() = NULL;
 static double complex* (*getDrawData)() = NULL;
 static double* (* getEpsMethod )() = NULL;
 
-static char folderName[256];
 static struct timeval timer1, timer2;
 
 static void setFDTD3D()
@@ -83,10 +83,7 @@ void simulator_finish(){
   printf("finish\n");
   gettimeofday(&timer2,NULL);
   printf("time = %lf \n", timer2.tv_sec-timer1.tv_sec+(timer2.tv_usec-timer1.tv_usec)*1e-6);
-  char fileName[256];
-  strcpy(fileName, folderName);
-  strcat(fileName, "mie.txt");
-  //field_outputElliptic(fileName, (*getDataZ)());
+
   (*finishMethod)(); //メモリの解放等  
 }
 

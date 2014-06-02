@@ -11,6 +11,6 @@ extern dcomplex* newDComplex(int size);
 extern void freeDComplex(dcomplex* array);
 
 extern double cnorm(dcomplex c);
-extern double complex cbilinear(dcomplex *p, double x, double y, int width, int height);
-extern double complex cbilinear3D(dcomplex *p, double x, double y, double z, int width, int height, int depth);
+extern double complex cbilinear(dcomplex *p, double x, double y, int index, int toNextX, int toNextY);
+extern double complex cbilinear3D(dcomplex *p, double x, double y, double z, int index, int toNextX, int toNextY, int toNextZ);
 #endif

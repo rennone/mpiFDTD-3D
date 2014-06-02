@@ -1,8 +1,12 @@
 #ifndef _FIELD_H
 #define _FIELD_H
 #include <stdio.h>
-#include <complex.h>
+#include "myComplex.h"
 #include "bool.h"
+#include <mpi.h>
+
+//各面の同期をとるための型
+extern MPI_Datatype MPI_DCOMPLEX_XY_PLANE, MPI_DCOMPLEX_YZ_PLANE, MPI_DCOMPLEX_XZ_PLANE;
 
 //入射波のモード
 enum WAVE_MODE{
@@ -47,6 +51,7 @@ typedef struct SubFieldInfo_S
   int SUB_N_PX, SUB_N_PY, SUB_N_PZ;
   int SUB_N_CELL;
   int SUB_N_PYZ;   // SUB_N_PY*SUB_N_PZ(あらかじめ計算しておく)
+  int Nproc; //全ランク数
   int Rank; //自身のランク
   int RtRank, LtRank, TpRank, BmRank, FtRank, BkRank; //周りの領域のプロセスランク
 }SubFieldInfo_S;
@@ -69,19 +74,6 @@ static const double MU_0_S = 4;//1.0/C_0_S/C_0_S;
 #define Z_0_S = sqrt(MU_0_S/EPSILON_0_S) //todo  あらかじめ計算しておく
 //static const double Z_0_S = 1.41422712488; //√(1.0/0.7/0.7/1.0) = √(μ/ε);
 
-extern int field_getOffsetX();
-extern int field_getOffsetY();
-extern int field_getOffsetZ();
-
-extern int field_getSubNx();
-extern int field_getSubNy();
-extern int field_getSubNz();
-
-extern int field_getSubNpx();
-extern int field_getSubNpy();
-extern int field_getSubNpz();
-extern int field_getSubNcell();
-
 //インデックスを取ってくる 
 extern int field_index(const int, const int, const int);
 extern int field_subIndex(const int, const int, const int);
@@ -103,15 +95,21 @@ extern void setField(const int wid, const int hei, const int dep, const double h
 extern double field_sigmaX(double x, double y, double z);
 extern double field_sigmaY(double x, double y, double z);
 extern double field_sigmaZ(double x, double y, double z);
+extern double field_pmlCoef(double x, double y);
+extern double field_pmlCoef2(double x, double y);
+
 extern double field_toCellUnit(const double);
 extern double field_toPhisycalUnit(const double);
 
 //---------------入射波---------------
 extern double complex field_pointLight(void);
 
+//散乱波
+// gapX, gapY : Ex-z, Hx-zは格子点からずれた位置に配置され散る為,格子点からのずれを送る必要がある.
+extern void field_scatteredPulse(dcomplex *p, double *eps, double gapX, double gapY, double gapZ);
+
 extern void field_nextStep(void);
 extern bool field_isFinish(void);
-
 
 //:getter
 extern double field_getK(void);
@@ -121,6 +119,18 @@ extern double field_getLambda(void);
 extern double field_getWaveAngle(void);
 extern double field_getTime(void);
 extern double field_getMaxTime(void);
+
+extern int field_getOffsetX();
+extern int field_getOffsetY();
+extern int field_getOffsetZ();
+
+extern int field_getSubNx();
+extern int field_getSubNy();
+extern int field_getSubNz();
+extern int field_getSubNpx();
+extern int field_getSubNpy();
+extern int field_getSubNpz();
+extern int field_getSubNcell();
 
 extern NTFFInfo field_getNTFFInfo(void);
 extern WaveInfo_S field_getWaveInfo_S(void);

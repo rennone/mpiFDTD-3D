@@ -26,7 +26,7 @@ void setModel(enum MODEL model)
   case NO_MODEL:
     noModel();
     break;
-  case MIE_CYLINDER:
+  case MIE_SPHERE:
     circleModel();
     break;
   case SHELF :
@@ -55,9 +55,5 @@ double models_eps(double x, double y, double z, enum MODE mode){
     epsilon = (*epsMethod)(x, y, z, 1, 1, 1);
   }
   
-  if(epsilon != EPSILON_0_S)
-  {
-    printf("%lf %lf, %lf, %lf", epsilon, x, y, z);
-  }
   return epsilon;
 }

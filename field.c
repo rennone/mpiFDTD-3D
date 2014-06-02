@@ -14,35 +14,24 @@ SubFieldInfo_S subFieldInfo_s;
 WaveInfo_S waveInfo_s;
 
 //MPI分割したときのフィールドパラメータ
-static int SUB_N_X;
-static int SUB_N_Y;
-static int SUB_N_Z;
+static MPI_Datatype MPI_DCOMPLEX_YZ_COL; //YZ平面の列に対応する(Zが列, Yが行), これをsize(X)繰り返せばXY平面全部とって来れるようにする.
 
-static int SUB_N_PX;
-static int SUB_N_PY;
-static int SUB_N_PZ;
-static int SUB_N_CELL;
+MPI_Datatype MPI_DCOMPLEX_YZ_PLANE; //yz平面全部をまとめた型
+MPI_Datatype MPI_DCOMPLEX_XZ_PLANE; //xz平面全部をまとめた型
+MPI_Datatype MPI_DCOMPLEX_XY_PLANE; //xy平面全部をまとめた型
+
+
 static int RANK, NPROC;
-static int LTRANK, RTRANK, TPRANK,BMRANK;
-static int OFFSET_X, OFFSET_Y, OFFSET_Z;
-static MPI_Datatype MPI_DOUBLE_COMPLEX_COLUM;
 
 //_u : 物理量変換単位, _s:シミュレーション単位
-static const int H_s = 1;
-static double H_u;         //1セルの大きさ(nm)
+//static const int H_s = 1;
 static double time;     //ステップ数
 static double ray_coef; //波をゆっくり入れる為の係数;
-static double waveAngle;//入射角
-static double Lambda_s; //波長 
-static double k_s;      //波数 
-static double w_s;      //角周波数
-static double T_s;      //周期 
-static void (*defaultWave)(double complex* p, double* eps);
+
 static double maxTime;
 
 static NTFFInfo ntff_info;
 
-static void field_setNTFF(int);
 static void mpiSplit(void);
 
 //:public------------------------------------//
@@ -146,64 +135,25 @@ void field_init(FieldInfo field_info)
   ntff_info.front  = fieldInfo_s.N_PML + 5;
   ntff_info.back   = fieldInfo_s.N_PZ - fieldInfo_s.N_PML - 5;
 
-  printf("SUB_N(%d %d %d) SUB_N_P(%d, %d, %d)\n"
-         , subFieldInfo_s.SUB_N_X
-         , subFieldInfo_s.SUB_N_Y
-         , subFieldInfo_s.SUB_N_Z
-         , subFieldInfo_s.SUB_N_PX
-         , subFieldInfo_s.SUB_N_PY
-         , subFieldInfo_s.SUB_N_PZ);
-
-  printf("SUB_N_PYZ=%d SUB_N_CELL=%d\n"
-         , subFieldInfo_s.SUB_N_PYZ
-         , subFieldInfo_s.SUB_N_CELL);
   // todo
 //  NOT_DONE("you have to check RFperC in 3D\n");
+  printf("you have to check RFperC in 3D\n");
   double len = (ntff_info.top - ntff_info.bottom)/2;
   ntff_info.RFperC = len*2;
   ntff_info.arraySize = maxTime + 2*ntff_info.RFperC;
 }
 
 //-------------------getter-------------------//
-double  field_getK()
-{
-  return waveInfo_s.K_s;
-}
+double  field_getK(){  return waveInfo_s.K_s;}
+double  field_getRayCoef(){  return ray_coef;}
+double  field_getOmega(){  return waveInfo_s.Omega_s;}
+double  field_getLambda(){  return waveInfo_s.Lambda_s;}
+double field_getTheta(){  return waveInfo_s.Theta_deg;}
+double field_getPhi(){  return waveInfo_s.Phi_deg;}
+double  field_getTime(){  return time;}
+double  field_getMaxTime(){  return maxTime;}
 
-double  field_getRayCoef()
-{
-  return ray_coef;
-}
-
-double  field_getOmega()
-{
-  return waveInfo_s.Omega_s;
-}
-
-double  field_getLambda()
-{
-  return waveInfo_s.Lambda_s;
-}
-
-double  field_getWaveAngle()
-{
-  return waveAngle;
-}
-
-double  field_getTime()
-{
-  return time;
-}
-
-double  field_getMaxTime()
-{
-  return maxTime;
-}
-
-NTFFInfo  field_getNTFFInfo()
-{
-  return ntff_info;
-}
+NTFFInfo  field_getNTFFInfo(){  return ntff_info;}
 
 //----------------------------------------//
  double field_sigmaX(const double x, const double __y, const double __z)
@@ -245,6 +195,18 @@ double field_sigmaZ(const double __x, const double __y, const double z)
     return pow(1.0*(z - (fieldInfo_s.N_PZ-fieldInfo_s.N_PML-1))/fieldInfo_s.N_PML,M);
 }
 
+//pml用の係数のひな形 Δt = 1
+//ep_mu εかμ(Eの係数->ε, Hの係数-> μ
+//sig  σ
+double field_pmlCoef(double ep_mu, double sig)
+{
+  return (1.0 - sig/ep_mu)/(1.0+sig/ep_mu);
+}
+double field_pmlCoef2(double ep_mu, double sig)
+{
+  return 1.0/(ep_mu + sig); // 1.0/{ep_mu(1.0 + sig/ep_mu)}と同じ
+}
+
 //------------------getter-------------------------//
 
 //------------------light method----------------------//
@@ -252,6 +214,37 @@ double field_sigmaZ(const double __x, const double __y, const double z)
  double complex field_pointLight(void)
 {
   return ray_coef * (cos(waveInfo_s.Omega_s*time) + sin(waveInfo_s.Omega_s*time)*I);
+}
+
+//ガウシアンパルス
+// gapX, gapY : Ex-z, Hx-zは格子点からずれた位置に配置され散る為,格子点からのずれを送る必要がある.
+// 分割領域では使えない->gapをさらに領域のオフセットだけずらせば使えそう
+// UPML専用
+void field_scatteredPulse(dcomplex *p, double *eps, double gapX, double gapY, double gapZ)
+{
+/*
+  double time = field_getTime();
+  double w_s  = field_getOmega();
+  double rad = field_getWaveAngle()*M_PI/180.0;	//ラジアン変換  
+
+  double cos_per_c = cos(rad)/C_0_S, sin_per_c = sin(rad)/C_0_S;
+  const double beam_width = 50; //パルスの幅
+
+  FieldInfo_S fInfo_s = field_getFieldInfo_S();
+  
+  //waveAngleにより, t0の値を変えないとちょうどいいところにピークが来なため,それを計算.
+  const double center_peak = (fInfo_s.N_PX/2.0+gapX)*cos_per_c+(fInfo_s.N_PY/2+gapY)*sin_per_c; //中心にピークがくる時間
+  const double t0 = -center_peak + 100; //常に100ステップの時に,領域の中心にピークが来るようにする.
+*/
+  /*
+  for(int i=1; i<fInfo_s.N_PX-1; i++) {
+    for(int j=1; j<fInfo_s.N_PY-1; j++) {
+      int k = field_index(i,j);
+      const double r = (i+gapX)*cos_per_c+(j+gapY)*sin_per_c-(time-t0); // (x*cos+y*sin)/C - (time-t0)
+      const double gaussian_coef = exp( -pow(r/beam_width, 2 ) );
+      p[k] += gaussian_coef*(EPSILON_0_S/eps[k] - 1)*cexp(I*r*w_s);     //p[k] -= かも(岡田さんのメール参照)
+    }
+    }*/
 }
 
 //------------------light method----------------------//
@@ -278,19 +271,19 @@ static void mpiSplit(void)
   MPI_Cart_shift(grid_comm, 0, 1, &subFieldInfo_s.LtRank, &subFieldInfo_s.RtRank); //x方向の隣
   MPI_Cart_shift(grid_comm, 1, 1, &subFieldInfo_s.BmRank, &subFieldInfo_s.TpRank); //y方向
 
-//  NOT_DONE("field.c check the order of FtRank and BkRank ");
-  MPI_Cart_shift(grid_comm, 2, 1, &subFieldInfo_s.BkRank, &subFieldInfo_s.FtRank); //z方向 todo 逆かもしれない
+  //z方向 todo 逆かもしれない=>たぶん合ってる
+  MPI_Cart_shift(grid_comm, 2, 1, &subFieldInfo_s.BkRank, &subFieldInfo_s.FtRank); 
 
   //プロセス座標において自分がどの位置に居るのか求める(何行何列に居るか)
   int coordinates[3];
   MPI_Comm_rank(grid_comm, &RANK);
   MPI_Cart_coords(grid_comm, RANK, dim, coordinates);
+
   
-/*これだと, 1個のデータをSUB_N_PY跳び(次のデータまでSUB_N_PY-1個隙間がある),SUB_N_X行ぶん取ってくる事になる */
-  MPI_Type_vector(SUB_N_X, 1, SUB_N_PY, MPI_C_DOUBLE_COMPLEX, &MPI_DOUBLE_COMPLEX_COLUM); 
-  MPI_Type_commit(&MPI_DOUBLE_COMPLEX_COLUM);
-
-
+  //ワールドタブにおける自分のランクを求める.
+  MPI_Comm_rank(MPI_COMM_WORLD, &subFieldInfo_s.Rank);
+  MPI_Comm_size(MPI_COMM_WORLD, &subFieldInfo_s.Nproc);
+  
   //小領域のパラメータ
   subFieldInfo_s.SUB_N_X    = fieldInfo_s.N_PX / procs[0];
   subFieldInfo_s.SUB_N_Y    = fieldInfo_s.N_PY / procs[1];
@@ -307,4 +300,45 @@ static void mpiSplit(void)
   subFieldInfo_s.OFFSET_X  = coordinates[0] * subFieldInfo_s.SUB_N_X;
   subFieldInfo_s.OFFSET_Y  = coordinates[1] * subFieldInfo_s.SUB_N_Y;
   subFieldInfo_s.OFFSET_Z  = coordinates[2] * subFieldInfo_s.SUB_N_Z;
+
+  //YZ平面の同期をとるための型を定義
+  //SUB_N_Z個の連続したデータ, SUB_N_PZ跳び(次のデータまでpz-p = 2個の隙間がある)に, SUB_N_Y行 取ってくる事になる
+  MPI_Type_vector(subFieldInfo_s.SUB_N_Y, subFieldInfo_s.SUB_N_Z,
+                  subFieldInfo_s.SUB_N_PZ, MPI_C_DOUBLE_COMPLEX, &MPI_DCOMPLEX_YZ_PLANE);
+  MPI_Type_commit(&MPI_DCOMPLEX_YZ_PLANE);
+
+  //XZ平面の同期をとるための型を定義
+  MPI_Type_vector(subFieldInfo_s.SUB_N_X, subFieldInfo_s.SUB_N_Z,
+                  subFieldInfo_s.SUB_N_PYZ, MPI_C_DOUBLE_COMPLEX, &MPI_DCOMPLEX_XZ_PLANE );
+  MPI_Type_commit(&MPI_DCOMPLEX_XZ_PLANE);
+
+  //XYは隙間が2段階あるので,一気に登録は出来ない.
+  MPI_Type_vector(subFieldInfo_s.SUB_N_Y, 1, subFieldInfo_s.SUB_N_PZ, MPI_C_DOUBLE_COMPLEX, &MPI_DCOMPLEX_YZ_COL);
+  MPI_Type_commit(&MPI_DCOMPLEX_YZ_COL);
+  
+  MPI_Type_vector(subFieldInfo_s.SUB_N_X, 1, subFieldInfo_s.SUB_N_PY, MPI_DCOMPLEX_YZ_COL, &MPI_DCOMPLEX_XY_PLANE);
+  MPI_Type_commit(&MPI_DCOMPLEX_XY_PLANE);
+}
+
+void field_outputElliptic(const char *fileName, dcomplex* data)
+{
+  printf("output start\n");
+  //file open
+  FILE *fp = openFile(fileName);
+  FieldInfo_S fInfo_s = field_getFieldInfo_S();
+  WaveInfo_S wInfo_s = field_getWaveInfo_S();
+  
+  int z = fInfo_s.N_PZ/2;  
+  for(int ang=180; ang >=0; ang--)
+  {
+    double rad = ang*M_PI/180.0;
+    double x = 1.2*wInfo_s.Lambda_s*cos(rad)+fInfo_s.N_PX/2.0;
+    double y = 1.2*wInfo_s.Lambda_s*sin(rad)+fInfo_s.N_PY/2.0;
+    int index = field_index((int)x, (int)y, z);
+    dcomplex phi = cbilinear(data, x, y, index, fInfo_s.N_PYZ, fInfo_s.N_PZ);
+    fprintf(fp, "%d, %lf \n", 180-ang, cnorm(phi));
+  }
+  
+  fclose(fp);
+  printf("output to %s end\n", fileName);
 }
