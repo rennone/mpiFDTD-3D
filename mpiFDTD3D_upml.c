@@ -23,6 +23,13 @@ static MPI_Datatype DCOMPLEX_XZ; //XZ平面
 //x(left-, right+)
 //y(bottom-, top+)
 //z(back-, front+)
+//Ex(i    ,j+0.5,k+0.5,t    ) -> Ex[i,j,k]
+//Ey(i+0.5,     ,k+0.5,t    ) -> Ey[i,j,k]
+//Ez(i+0.5,j+0.5,k    ,t    ) -> Ez[i,j,k]
+
+//Hx(i+0.5,j    ,k    ,t+0.5) -> Hx[i,j,k]
+//Hy(i    ,j+0.5,k    ,t+0.5) -> Hy[i,j,k]
+//Hz(i    ,j    ,k+0.5,t+0.5) -> Hz[i,j,k]
 
 //Hx(i,j+0.5,k)         -> Hx[i,j,k]
 //Hy(i+0.5,j,k)         -> Hy[i,j,k]
