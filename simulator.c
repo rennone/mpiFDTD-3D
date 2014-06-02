@@ -59,7 +59,11 @@ static void setSolver(enum SOLVER solver)
 void simulator_calc(){
   (*updateMethod)();
   
-  field_nextStep();   //時間を一つ進める  
+  field_nextStep();   //時間を一つ進める
+
+  int time = (int)field_getTime();
+  if( time%100 == 0)
+    printf( "time = %d\n", (int)time );
 }
 
 void simulator_init(FieldInfo field_info, enum MODEL model, enum SOLVER solver){

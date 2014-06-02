@@ -28,7 +28,7 @@ FILE* openFile(const char* file_name)
 #include <sys/stat.h>
 #include <unistd.h>
 
-bool makeDirectory(const char* name)
+void makeDirectory(const char* name)
 {
   if(mkdir(name,   S_IRUSR | S_IWUSR | S_IXUSR |         /* rwx */
     S_IRGRP | S_IWGRP | S_IXGRP |         /* rwx */

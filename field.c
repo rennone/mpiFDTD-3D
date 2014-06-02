@@ -27,9 +27,7 @@ static int RANK, NPROC;
 //static const int H_s = 1;
 static double time;     //ステップ数
 static double ray_coef; //波をゆっくり入れる為の係数;
-
 static double maxTime;
-
 static NTFFInfo ntff_info;
 
 static void mpiSplit(void);
@@ -287,12 +285,10 @@ static void mpiSplit(void)
   //小領域のパラメータ
   subFieldInfo_s.SUB_N_X    = fieldInfo_s.N_PX / procs[0];
   subFieldInfo_s.SUB_N_Y    = fieldInfo_s.N_PY / procs[1];
-  subFieldInfo_s.SUB_N_Z    = fieldInfo_s.N_PZ / procs[2];
-  
+  subFieldInfo_s.SUB_N_Z    = fieldInfo_s.N_PZ / procs[2];  
   subFieldInfo_s.SUB_N_PX   = subFieldInfo_s.SUB_N_X + 2; //のりしろの分2大きい
   subFieldInfo_s.SUB_N_PY   = subFieldInfo_s.SUB_N_Y + 2; //のりしろの分2大きい
-  subFieldInfo_s.SUB_N_PZ   = subFieldInfo_s.SUB_N_Z + 2; //のりしろの分2大きい
-  
+  subFieldInfo_s.SUB_N_PZ   = subFieldInfo_s.SUB_N_Z + 2; //のりしろの分2大きい  
   subFieldInfo_s.SUB_N_CELL = subFieldInfo_s.SUB_N_PX*subFieldInfo_s.SUB_N_PY*subFieldInfo_s.SUB_N_PZ;
   subFieldInfo_s.SUB_N_PYZ  = subFieldInfo_s.SUB_N_PY*subFieldInfo_s.SUB_N_PZ;
 

@@ -54,7 +54,7 @@ int main( int argc, char *argv[] )
 #ifndef USE_OPENGL    //only calculate mode
     while(!simulator_isFinish())
     {
-       simulator_calc();
+       simulator_calc();       
        //   MPI_Barrier(MPI_COMM_WORLD);
     }
     MPI_Barrier(MPI_COMM_WORLD);
