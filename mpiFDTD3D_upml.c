@@ -277,11 +277,11 @@ static  void calcJDE()
   //X
   FAST_3FOR(w, sInfo, toNextX)
   {
-    const int w_btm = field_subBottom(w);
+    const int w_top = field_subTop(w);
     const int w_frt = field_subFront(w);
 
     const dcomplex nowJx = Jx[w];
-    Jx[w] = C_JX[w]*Jx[w] + C_JXHYHZ[w]*(Hz[w]-Hz[w_btm] -Hy[w_frt]+Hy[w]);
+    Jx[w] = C_JX[w]*Jx[w] + C_JXHYHZ[w]*(Hz[w_top]-Hz[w] -Hy[w_frt]+Hy[w]);
     Dx[w] = C_DX[w]*Dx[w] + C_DXJX1[w]*Jx[w] - C_DXJX0[w]*nowJx;
     Ex[w] = Dx[w]/EPS_EX[w];
   }
@@ -289,10 +289,10 @@ static  void calcJDE()
   //Y
   FAST_3FOR(w, sInfo, toNextX)
   {
-    const int w_lft = field_subLeft(w);   //一つ左
+    const int w_rht = field_subRight(w);   //一つ左
     const int w_frt = field_subFront(w);  //todo
     const dcomplex nowJy = Jy[w];
-    Jy[w] = C_JY[w]*Jy[w] + C_JYHXHZ[w]*( Hx[w_frt]-Hx[w] -Hz[w]+Hz[w_lft] );
+    Jy[w] = C_JY[w]*Jy[w] + C_JYHXHZ[w]*( Hx[w_frt]-Hx[w] -Hz[w_rht]+Hz[w] );
     Dy[w] = C_DY[w]*Dy[w] + C_DYJY1[w]*Jy[w] - C_DYJY0[w]*nowJy;
     Ey[w] = Dy[w]/EPS_EY[w];
   }
@@ -300,15 +300,15 @@ static  void calcJDE()
   //Z
   FAST_3FOR(w, sInfo, toNextX)
   {
-    const int w_lft = field_subLeft(w);   //一つ左
-    const int w_btm = field_subBottom(w); //一つ下
+    const int w_rht = field_subRight(w);   //一つ左
+    const int w_top = field_subTop(w); //一つ下
     const dcomplex nowJz = Jz[w];
-    Jz[w] = C_JZ[w]*Jz[w] + C_JZHXHY[w]*(+Hy[w] - Hy[w_lft] -Hx[w]+Hx[w_btm]);
+    Jz[w] = C_JZ[w]*Jz[w] + C_JZHXHY[w]*(+Hy[w_rht] - Hy[w] -Hx[w_top]+Hx[w]);
     Dz[w] = C_DZ[w]*Dz[w] + C_DZJZ1[w]*Jz[w] - C_DZJZ0[w]*nowJz;
     Ez[w] = Dz[w]/EPS_EZ[w];
   }
     
-}
+  }
 
 //calculate M and B
 static void calcMBH()
@@ -319,10 +319,10 @@ static void calcMBH()
   //X
   FAST_3FOR(w, sInfo, toNextX)
   {
-    const int w_top = field_subTop(w);   //一つ上
+    const int w_btm = field_subBottom(w);   //一つ上
     const int w_bck = field_subBack(w);  //1つ前        
     const dcomplex nowMx = Mx[w];    
-    Mx[w] = C_MX[w]*Mx[w] - C_MXEYEZ[w]*(Ez[w_top]-Ez[w] -Ey[w]+Ey[w_bck]); //原因
+    Mx[w] = C_MX[w]*Mx[w] - C_MXEYEZ[w]*(Ez[w]-Ez[w_btm] -Ey[w]+Ey[w_bck]); //原因
     Bx[w] = C_BX[w]*Bx[w] + C_BXMX1[w]*Mx[w] - C_BXMX0[w]*nowMx;
     Hx[w] = Bx[w]/MU_0_S;
   }
@@ -330,10 +330,10 @@ static void calcMBH()
   //Y
   FAST_3FOR(w, sInfo, toNextX)
   {
-    const int w_rht = field_subRight(w);
+    const int w_lft = field_subLeft(w);
     const int w_bck = field_subBack(w);  //1つ前
     const dcomplex nowMy = My[w];
-    My[w] = C_MY[w]*My[w] - C_MYEXEZ[w]*( Ex[w]-Ex[w_bck] -Ez[w_rht]+Ez[w]); //原因
+    My[w] = C_MY[w]*My[w] - C_MYEXEZ[w]*( Ex[w]-Ex[w_bck] -Ez[w]+Ez[w_lft]); //原因
     By[w] = C_BY[w]*By[w] + C_BYMY1[w]*My[w] - C_BYMY0[w]*nowMy;
     Hy[w] = By[w]/MU_0_S;
   }
@@ -341,10 +341,10 @@ static void calcMBH()
   //Z
   FAST_3FOR(w, sInfo, toNextX)
   {
-    const int w_rht = field_subRight(w);
-    const int w_top = field_subTop(w);   //一つ上
+    const int w_lft = field_subLeft(w);
+    const int w_btm = field_subBottom(w);   //一つ上
     const dcomplex nowMz = Mz[w];
-    Mz[w] = C_MZ[w]*Mz[w] - C_MZEXEY[w]*( Ey[w_rht]-Ey[w] -Ex[w_top]+Ex[w] );
+    Mz[w] = C_MZ[w]*Mz[w] - C_MZEXEY[w]*( Ey[w]-Ey[w_lft] -Ex[w]+Ex[w_btm] );
     Bz[w] = C_BZ[w]*Bz[w] + C_BZMZ1[w]*Mz[w] - C_BZMZ0[w]*nowMz;
     Hz[w] = Bz[w]/MU_0_S;
   }
@@ -476,33 +476,30 @@ static void setCoefficient()
         int x = i-1+sInfo.OFFSET_X;
         int y = j-1+sInfo.OFFSET_Y;
         int z = k-1+sInfo.OFFSET_Z;
-        EPS_EX[w] = models_eps(x+0.5,y    ,z+0.5,D_Y); //todo 
-        EPS_EY[w] = models_eps(x    ,y+0.5,z+0.5,D_X);
-        EPS_EZ[w] = models_eps(x    ,y    ,z    ,D_XY);
+        
+        EPS_EX[w] = models_eps(x    ,y+0.5,z+0.5,D_Y); //todo 
+        EPS_EY[w] = models_eps(x+0.5,y    ,z+0.5,D_X);
+        EPS_EZ[w] = models_eps(x+0.5,y+0.5,z    ,D_XY);
 
-        sig_ex_x = sig_max*field_sigmaX(x+0.5,y    ,z+0.5);
-        sig_ex_y = sig_max*field_sigmaY(x+0.5,y    ,z+0.5);
-        sig_ex_z = sig_max*field_sigmaZ(x+0.5,y    ,z+0.5);
-        
-        sig_ey_x = sig_max*field_sigmaX(x    ,y+0.5,z+0.5);
-        sig_ey_y = sig_max*field_sigmaY(x    ,y+0.5,z+0.5);
-        sig_ey_z = sig_max*field_sigmaZ(x    ,y+0.5,z+0.5);
-        
-        sig_ez_x = sig_max*field_sigmaX(x    ,y    ,z    );
-        sig_ez_y = sig_max*field_sigmaY(x    ,y    ,z    );
-        sig_ez_z = sig_max*field_sigmaZ(x    ,y    ,z    );
-        
-        sig_hx_x = sig_max*field_sigmaX(x    ,y+0.5,z    );
-        sig_hx_y = sig_max*field_sigmaY(x    ,y+0.5,z    );
-        sig_hx_z = sig_max*field_sigmaZ(x    ,y+0.5,z    );
-        
-        sig_hy_x = sig_max*field_sigmaX(x+0.5,y    ,z    );
-        sig_hy_y = sig_max*field_sigmaY(x+0.5,y    ,z    );
-        sig_hy_z = sig_max*field_sigmaZ(x+0.5,y    ,z    );
-        
-        sig_hz_x = sig_max*field_sigmaX(x+0.5,y+0.5,z+0.5);
-        sig_hz_y = sig_max*field_sigmaY(x+0.5,y+0.5,z+0.5);
-        sig_hz_z = sig_max*field_sigmaZ(x+0.5,y+0.5,z+0.5);
+        sig_ex_x = sig_max*field_sigmaX(x    ,y+0.5,z+0.5);
+        sig_ex_y = sig_max*field_sigmaY(x    ,y+0.5,z+0.5);
+        sig_ex_z = sig_max*field_sigmaZ(x    ,y+0.5,z+0.5);        
+        sig_ey_x = sig_max*field_sigmaX(x+0.5,y    ,z+0.5);
+        sig_ey_y = sig_max*field_sigmaY(x+0.5,y    ,z+0.5);
+        sig_ey_z = sig_max*field_sigmaZ(x+0.5,y    ,z+0.5);        
+        sig_ez_x = sig_max*field_sigmaX(x+0.5,y+0.5,z    );
+        sig_ez_y = sig_max*field_sigmaY(x+0.5,y+0.5,z    );
+        sig_ez_z = sig_max*field_sigmaZ(x+0.5,y+0.5,z    );
+
+        sig_hx_x = sig_max*field_sigmaX(x+0.5,y    ,z    );
+        sig_hx_y = sig_max*field_sigmaY(x+0.5,y    ,z    );
+        sig_hx_z = sig_max*field_sigmaZ(x+0.5,y    ,z    );
+        sig_hy_x = sig_max*field_sigmaX(x    ,y+0.5,z    );
+        sig_hy_y = sig_max*field_sigmaY(x    ,y+0.5,z    );
+        sig_hy_z = sig_max*field_sigmaZ(x    ,y+0.5,z    );
+        sig_hz_x = sig_max*field_sigmaX(x    ,y    ,z+0.5);
+        sig_hz_y = sig_max*field_sigmaY(x    ,y    ,z+0.5);
+        sig_hz_z = sig_max*field_sigmaZ(x    ,y    ,z+0.5);
 
         //Δt = 1 , Κ_i = 1, h = 1
         double eps = EPSILON_0_S;        
@@ -565,8 +562,7 @@ static dcomplex* unifyToRank0(dcomplex *phi)
   SubFieldInfo_S subInfo_s = field_getSubFieldInfo_S();
   FieldInfo_S fInfo_s = field_getFieldInfo_S();
   //マスターにすべて集める
-  if(subInfo_s.Rank == 0)
-  {
+  if(subInfo_s.Rank == 0){
     MPI_Status status;
     dcomplex *entire = newDComplex(fInfo_s.N_CELL);
     cpy(entire, Ez, subInfo_s.OFFSET_X, subInfo_s.OFFSET_Y, subInfo_s.OFFSET_Z);
@@ -580,15 +576,15 @@ static dcomplex* unifyToRank0(dcomplex *phi)
       cpy(entire, tmp, offset[0], offset[1], offset[2]);      
     }
     free(tmp);
-    return entire;
-  } else {
+    return entire;    
+  }
+  else {
     int offset[3];
     offset[0] = subInfo_s.OFFSET_X;
     offset[1] = subInfo_s.OFFSET_Y;
     offset[2] = subInfo_s.OFFSET_Z;
     MPI_Send(offset, 3, MPI_INT, 0, 0, MPI_COMM_WORLD);
-    MPI_Send(Ez, subInfo_s.SUB_N_CELL, MPI_C_DOUBLE_COMPLEX, 0, 1, MPI_COMM_WORLD);
-    
+    MPI_Send(Ez, subInfo_s.SUB_N_CELL, MPI_C_DOUBLE_COMPLEX, 0, 1, MPI_COMM_WORLD);    
     return NULL; //マスター以外はNULLを返す.
   }
 }
@@ -600,35 +596,7 @@ static void miePrint()
   if( entire != NULL){
     field_outputElliptic("Ez.txt",entire);
     free(entire);
-  }
-  /*
-  SubFieldInfo_S subInfo_s = field_getSubFieldInfo_S();
-  FieldInfo_S fInfo_s = field_getFieldInfo_S();
-  //マスターにすべて集める
-  if(subInfo_s.Rank == 0)
-  {
-    MPI_Status status;
-    dcomplex *entire = newDComplex(fInfo_s.N_CELL);
-
-    cpy(entire, Ez, subInfo_s.OFFSET_X, subInfo_s.OFFSET_Y, subInfo_s.OFFSET_Z);
-
-    int offset[3];
-    for(int i=1; i<subInfo_s.Nproc; i++)
-    {
-      MPI_Recv(offset, 3, MPI_INT, i, 0, MPI_COMM_WORLD, &status);
-      MPI_Recv(Ez, subInfo_s.SUB_N_CELL, MPI_C_DOUBLE_COMPLEX, i, 1, MPI_COMM_WORLD, &status);
-      cpy(entire, Ez, offset[0], offset[1], offset[2]);      
-    }
-    field_outputElliptic("Ez.txt",entire);
-    free(entire);
-  } else {
-    int offset[3];
-    offset[0] = subInfo_s.OFFSET_X;
-    offset[1] = subInfo_s.OFFSET_Y;
-    offset[2] = subInfo_s.OFFSET_Z;
-    MPI_Send(offset, 3, MPI_INT, 0, 0, MPI_COMM_WORLD);
-    MPI_Send(Ez, subInfo_s.SUB_N_CELL, MPI_C_DOUBLE_COMPLEX, 0, 1, MPI_COMM_WORLD);
-    }  */
+  }  
 }
 
 static void freeMemories()
