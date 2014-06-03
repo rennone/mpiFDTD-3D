@@ -46,7 +46,7 @@ int main( int argc, char *argv[] )
   fInfo.stepNum   = 500;
   fInfo.theta_deg = 0;
   fInfo.phi_deg   = 0;
-  enum MODEL modelType   = MIE_SPHERE;//NO_MODEL;
+  enum MODEL modelType   = NO_MODEL;
   enum SOLVER solberType = MPI_FDTD_3D;
   MPI_Init( 0, 0 );
   simulator_init(fInfo, modelType, solberType);
@@ -88,20 +88,20 @@ static void drawField()
 {
   FieldInfo_S fInfo = field_getFieldInfo_S();
   dcomplex *data3D = simulator_getDrawingData();
-//  double *eps3D = simulator_getEps();
-
-  drawer_paintImage3(data3D);
-//  drawer_paintModel(0,0, fInfo.N_X, fInfo.N_Y, fInfo.N_PX, fInfo.N_PY,&eps3D);
+  double *eps3D = simulator_getEps();
 }
 
 static void drawSubField()
 {
-  SubFieldInfo_S subInfo = field_getSubFieldInfo_S();
+
   dcomplex *data3D = simulator_getDrawingData();
   double *eps3D = simulator_getEps();
 
-  drawer_subFieldPaintImage3(data3D);
-  drawer_subFieldPaintModel3(eps3D);
+  FieldInfo_S fInfo = field_getFieldInfo_S();
+  SubFieldInfo_S sInfo = field_getSubFieldInfo_S();
+  bool ZZ = (sInfo.OFFSET_Z < fInfo.N_PZ/2) && ( fInfo.N_PZ/2 <= sInfo.OFFSET_Z + sInfo.SUB_N_Z);
+  if(ZZ)
+    drawer_subFieldPaintImage3(data3D, eps3D);
 }
 
 void display(void)

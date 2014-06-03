@@ -158,35 +158,40 @@ void drawer_paintImage(int left, int bottom, int right, int top, int width, int 
 /*
   3次元空間を3面図で描画する. [0]は横, [1]は縦に描画する
   phis : 3次元空間の複素数データ.
+  eps  : 3次元空間のモデルデータ.
   startIndex       : テクスチャの左下に対応する3D空間のインデックス
   length[2]        : 平面の長さ
   offsetIndex[2]   : 各次元における.1次元配列で保存している為, となりのインデックスまでのオフセット量( 基本的にxはheight*depth, yはdepth, zは1 )
-  fixedIndex       : 各面のx,y,zの固定点( yz平面を描画する場合はx座標のインデックスを渡す)
-  fixedIndexOffset : 固定点に対する隣のインデックスへのオフセット量
+  u : テクスチャ配列の変化量に対するデータ配列の変化量の割合
   quadrant         : 描画位置(象限)
  */
-
-static void paint(dcomplex *phis, int startIndex, int length[2], int offsetIndex[2], int fixedIndex, int fixedIndexOffset, int quadrant)
+static void paint(dcomplex *phis, double *eps, int startIndex, int lengthX, int lengthY, int offsetX, int offsetY, double u, int quadrant)
 {
-  //3D空間とテクスチャのサイズ比
-  double ux = 1.0*(length[0])/TEX_SIZE;
-  double uy = 1.0*(length[1])/TEX_SIZE;
-  double u = max(ux, uy); //一番大きなスケールに合わせる(はみ出ら無いように).
-  
   colorf c;
-  dcomplex cphi;
-  int dx = (quadrant&1)*TEX_SIZE;       //横の象限
-  int dy = ((quadrant>>1)&1)*TEX_SIZE;  //縦
-  
+  double amp = 1000;
+  int ox = (quadrant&1)*TEX_SIZE;       //原点
+  int oy = ((quadrant>>1)&1)*TEX_SIZE;  //原点 
+  double x, y;
   int i,j;
-  double x,y;
-  //第一象限にxy平面を描画 xが横軸
-  for(i=0, x=0; i<TEX_SIZE && x<=length[0]; i++, x+=u){
-    for(j=0, y=0; j<TEX_SIZE && y<length[1]; j++, y+=u){
-      int index = (int)x*offsetIndex[0] + (int)y*offsetIndex[1] + startIndex;
-      cphi = _cbilinear(phis, x, y, index, offsetIndex[0], offsetIndex[1]);
-      colorTransform(colorMode(cphi), &c);      
-      texColor[i+dx][j+dy] = c;
+  for(i=0, x=0; i<TEX_SIZE && x<lengthX-1; i++, x+=u){    
+    for(j=0, y=0; j<TEX_SIZE && y<lengthY-1; j++, y+=u){      
+      dcomplex cphi = _cbilinear(phis, x, y, startIndex + floor(x)*offsetX + floor(y)*offsetY, offsetX, offsetY);      
+      colorTransform(colorMode(cphi)*amp, &c);
+
+      texColor[i+ox][j+oy] = c;
+
+      double dphi = _dbilinear(eps,x, y, startIndex + floor(x)*offsetX + floor(y)*offsetY, offsetX, offsetY);
+      double n = 1-1.0/dphi;
+      //中心には線を引く
+      if(i==TEX_SIZE/2 || j==TEX_SIZE/2) {
+        texColor[i+ox][j+oy].r = 0;
+        texColor[i+ox][j+oy].g = 0;
+        texColor[i+ox][j+oy].b = 0;
+      } else {
+        texColor[i+ox][j+oy].r -= n;
+        texColor[i+ox][j+oy].g -= n;
+        texColor[i+ox][j+oy].b -= n;
+      }      
     }
   }
 }
@@ -237,128 +242,29 @@ void drawer_paintImage3(dcomplex *phis)
   }
 }
 
-void drawer_subFieldPaintImage3(dcomplex *phis)
+void drawer_subFieldPaintImage3(dcomplex *phis, double *eps)
 {
   SubFieldInfo_S sInfo = field_getSubFieldInfo_S();
 
-  //第一象限に
   //線の長さは,格子点の数よりも1小さい.
   double ux = (sInfo.SUB_N_X-1.0)/TEX_SIZE;
   double uy = (sInfo.SUB_N_Y-1.0)/TEX_SIZE;
   double uz = (sInfo.SUB_N_Z-1.0)/TEX_SIZE;
   double u = max(max(ux,uy),uz);
-  
-  colorf c;
-  dcomplex cphi;
-
-  int i,j;
-  double x,y,z;
-
-  double amp = 10; //描画するときは見やすいように増幅する
-  int offsetT, offsetS;
-
-  offsetT = 0;//TEX_SIZE;
-  offsetS = 0;//TEX_SIZE;
-  //第一象限にxy平面を描画 xが横軸.線形補完で一つ後ろの値も使う為,終了条件はPX-2になる.
-  for(i=0,x=1; i<TEX_SIZE && x<sInfo.SUB_N_PX-2; i++, x+=u){
-    for(j=0,y=1; j<TEX_SIZE && y<sInfo.SUB_N_PY-2; j++, y+=u){
-      int index = field_subIndex( (int)x, (int)y ,sInfo.SUB_N_PZ/2);
-      cphi = _cbilinear(phis,x, y, index, sInfo.SUB_N_PYZ, sInfo.SUB_N_PZ);
-      colorTransform(colorMode(cphi) * amp, &c);    
-
-      texColor[i+offsetT][j+offsetS] = c;
-    }
-  }  
-/*  
-  //第二象限にxz平面を描画  xが横軸
-
-  offsetT = 0;
-  offsetS = TEX_SIZE;
-  for(i=0,x=1; i<TEX_SIZE && x<sInfo.SUB_N_PX-2; i++, x+=u){
-    for(j=0,z=1; j<TEX_SIZE && z<sInfo.SUB_N_PZ-2; j++, z+=u){
-      int index = field_subIndex( (int)x, sInfo.SUB_N_PY/2, (int)z);
-      cphi = _cbilinear(phis, x, z, index, sInfo.SUB_N_PYZ, 1);
-      colorTransform(colorMode(cphi) * amp, &c);
-      texColor[i+offsetT][j+offsetS] = c;
-    }
-  }
-
-  //第三象限にzy平面を描画  (zが横軸)
-  offsetT = 0;
-  offsetS = 0;
-  for(i=0,z=1; i<TEX_SIZE && z<sInfo.SUB_N_PZ-2; i++, z+=u){
-    for(j=0,y=1; j<TEX_SIZE && y<sInfo.SUB_N_PY-2; j++, y+=u){
-      int index = field_subIndex( sInfo.SUB_N_PX/2, (int)y, (int)z);
-      cphi = _cbilinear(phis, z, y, index, 1, sInfo.SUB_N_PZ);
-      colorTransform(colorMode(cphi) * amp, &c);
-      texColor[i+offsetT][j+offsetS] = c;
-    }
-  }*/
-}
-
-void drawer_subFieldPaintModel3(double *phis)
-{
-  SubFieldInfo_S sInfo = field_getSubFieldInfo_S();
-  
-  //第一象限に
-  double ux = (sInfo.SUB_N_X-1.0)/TEX_SIZE;
-  double uy = (sInfo.SUB_N_Y-1.0)/TEX_SIZE;
-  double uz = (sInfo.SUB_N_Z-1.0)/TEX_SIZE;
-  double u = max(max(ux,uy),uz);
-  
-  colorf c;
-  double dphi;
-
-  int i,j;
-  double x,y,z;
-
-  //第一象限にxy平面を描画 xが横軸
-  //モデルは端っこの
-  for(i=0,x=1; i<TEX_SIZE && x<sInfo.SUB_N_PX-2; i++, x+=u){
-    for(j=0,y=1; j<TEX_SIZE && y<sInfo.SUB_N_PY-2; j++, y+=u){
-      int index = field_subIndex( (int)x, (int)y ,sInfo.SUB_N_PZ/2);
-      dphi = _dbilinear(phis,x, y, index, sInfo.SUB_N_PYZ, sInfo.SUB_N_PZ);
-
-      double n = 1-1.0/dphi;
-
-      //中心には線を引く
-      if(i==TEX_SIZE/2 || j==TEX_SIZE/2) {
-        texColor[i][j].r = 1;
-        texColor[i][j].g = 1;
-        texColor[i][j].b = 1;
-      } else {
-        texColor[i][j].r -= n;
-        texColor[i][j].g -= n;
-        texColor[i][j].b -= n;
-      }
-    }
-  }
-  
+  int w;
+  /*
+//第3象限(左下)にXY平面
+  int w = field_subIndex(1, 1, sInfo.SUB_N_PZ/2);
+  paint(phis,eps, w, sInfo.SUB_N_X, sInfo.SUB_N_Y, sInfo.SUB_N_PYZ, sInfo.SUB_N_PZ ,u, 0);
+  */
+//第4象限(右下)にXZ平面
+  w = field_subIndex(1, sInfo.SUB_N_PZ/2, 1);
+  paint(phis,eps, w, sInfo.SUB_N_X, sInfo.SUB_N_Z, sInfo.SUB_N_PYZ, 1 ,u, 0);
 /*
-  //第二象限にxz平面を描画  xが横軸
-  for(i=0,x=1; i<TEX_SIZE && x<sInfo.SUB_N_PX-1; i++, x+=u){
-    for(j=0,z=1; j<TEX_SIZE && z<sInfo.SUB_N_PZ-1; j++, z+=u){
-      int index = field_subIndex( (int)x, sInfo.SUB_N_PY/2, (int)z);
-      dphi = _dbilinear(phis,x, y, index, sInfo.SUB_N_PYZ, sInfo.SUB_N_PZ);
-      
-      double n = 1-1.0/dphi;
-      texColor[i][j+TEX_SIZE].r -= n;
-      texColor[i][j+TEX_SIZE].g -= n;
-      texColor[i][j+TEX_SIZE].b -= n;
-    }
-  }
-
-  //第三象限にzy平面を描画  (zが横軸)
-  for(i=0,y=1; i<TEX_SIZE && y<sInfo.SUB_N_PY-1; i++, y+=u){
-    for(j=0,z=1; j<TEX_SIZE && z<sInfo.SUB_N_PZ-1; j++, z+=u){
-      int index = field_subIndex( sInfo.SUB_N_PX/2, (int)y, (int)z);
-      dphi = _dbilinear(phis,x, y, index, sInfo.SUB_N_PYZ, sInfo.SUB_N_PZ);
-      double n = 1-1.0/dphi;
-      texColor[i][j].r -= n;
-      texColor[i][j].g -= n;
-      texColor[i][j].b -= n; 
-    }
-    }*/
+//第2象限(左上)にZY平面
+  w = field_subIndex(sInfo.SUB_N_PX/2, 1, 1);
+  paint(phis,eps, w, sInfo.SUB_N_Z, sInfo.SUB_N_Y, 1, sInfo.SUB_N_PZ, u, 2);
+*/
 }
 
 void drawer_paintModel(int left, int bottom, int right, int top, int width, int height, double *phis)

@@ -96,6 +96,7 @@ static void freeMemories(void);
 static void Connection_SendRecvE(void);
 static void Connection_SendRecvH(void);
 static void scatteredWave(dcomplex *p, double *eps, double gapX, double gapY, double gapZ);
+static void pointLightInCenter(dcomplex *p);
 
 static void miePrint(void);
 
@@ -141,22 +142,28 @@ static void reset()
 //Update
 static void update(void)
 {
-  SubFieldInfo_S sInfo = field_getSubFieldInfo_S();
   calcMBH();
   Connection_SendRecvH();
   calcJDE();
 
-  /*
-  FieldInfo_S fInfo = field_getFieldInfo_S();
-  if(sInfo.OFFSET_X <= fInfo.N_PX/2 && sInfo.OFFSET_X+sInfo.SUB_N_X-1 >= fInfo.N_PX/2)
-  {
-    int w = field_subIndex(fInfo.N_PX/2-sInfo.OFFSET_X+1, sInfo.SUB_N_PY/2, sInfo.SUB_N_PZ/2);
-    Ez[w] = field_pointLight();
-    }*/
-  scatteredWave(Ez, EPS_EZ, 0.5, 0.5, 0.0);
+  pointLightInCenter(Ez);
+//  scatteredWave(Ez, EPS_EZ, 0.5, 0.5, 0.0);
   Connection_SendRecvE();  
 }
 
+static void pointLightInCenter(dcomplex *p)
+{
+  FieldInfo_S fInfo = field_getFieldInfo_S();
+  SubFieldInfo_S sInfo = field_getSubFieldInfo_S();
+  bool XX = (sInfo.OFFSET_X < fInfo.N_PX/2) && ( fInfo.N_PX/2 <= sInfo.OFFSET_X + sInfo.SUB_N_X);
+  bool YY = (sInfo.OFFSET_Y < fInfo.N_PY/2) && ( fInfo.N_PY/2 <= sInfo.OFFSET_Y + sInfo.SUB_N_Y);
+  bool ZZ = (sInfo.OFFSET_Z < fInfo.N_PZ/2) && ( fInfo.N_PZ/2 <= sInfo.OFFSET_Z + sInfo.SUB_N_Z);
+
+  if(XX && YY && ZZ){
+    int w = field_subIndex(fInfo.N_PX/2 - sInfo.OFFSET_X, fInfo.N_PY/2 - sInfo.OFFSET_Y, fInfo.N_PZ/2 - sInfo.OFFSET_Z);
+    p[w] += field_pointLight();
+  }
+}
 //単一波長の散乱波
 // gapX, gapY : Ex-z, Hx-zは格子点からずれた位置に配置され散る為,格子点からのずれを送る必要がある.
 // UPML専用
