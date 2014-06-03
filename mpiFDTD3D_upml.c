@@ -146,14 +146,17 @@ static void update(void)
   Connection_SendRecvH();
   calcJDE();
 
-  /*
+  
   FieldInfo_S fInfo = field_getFieldInfo_S();
-  if(sInfo.OFFSET_X <= fInfo.N_PX/2 && sInfo.OFFSET_X+sInfo.SUB_N_X-1 >= fInfo.N_PX/2)
+  bool XX = (sInfo.OFFSET_X <= fInfo.N_PX/2) && (sInfo.OFFSET_X+sInfo.SUB_N_X-1 >= fInfo.N_PX/2);
+  bool YY = (sInfo.OFFSET_Y <= fInfo.N_PY/2) && (sInfo.OFFSET_Y+sInfo.SUB_N_Y-1 >= fInfo.N_PY/2);
+  bool ZZ = (sInfo.OFFSET_Z <= fInfo.N_PZ/2) && (sInfo.OFFSET_Z+sInfo.SUB_N_Z-1 >= fInfo.N_PZ/2);
+  if( XX && YY && ZZ)
   {
-    int w = field_subIndex(fInfo.N_PX/2-sInfo.OFFSET_X+1, sInfo.SUB_N_PY/2, sInfo.SUB_N_PZ/2);
+    int w = field_subIndex(fInfo.N_PX/2-sInfo.OFFSET_X+1, fInfo.N_PY/2-sInfo.OFFSET_Y + 1, fInfo.N_PZ/2 + sInfo.OFFSET_Z);
     Ez[w] = field_pointLight();
-    }*/
-  scatteredWave(Ez, EPS_EZ, 0.5, 0.5, 0.0);
+  }
+  //  scatteredWave(Ez, EPS_EZ, 0.5, 0.5, 0.0);
   Connection_SendRecvE();  
 }
 
