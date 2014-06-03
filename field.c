@@ -118,7 +118,7 @@ void field_init(FieldInfo field_info)
   fieldInfo_s.N_Y   = fieldInfo_s.N_PY - 2*fieldInfo_s.N_PML;
   fieldInfo_s.N_Z   = fieldInfo_s.N_PZ - 2*fieldInfo_s.N_PML;
   fieldInfo_s.N_CELL= fieldInfo_s.N_PY*fieldInfo_s.N_PX*fieldInfo_s.N_PZ;
-  fieldInfo_s.N_PYZ = fieldInfo_s.N_Y*fieldInfo_s.N_Z;
+  fieldInfo_s.N_PYZ = fieldInfo_s.N_PY*fieldInfo_s.N_PZ;
 
   //入射波パラメータの計算
   waveInfo_s.Lambda_s  = field_toCellUnit(fieldInfo.lambda_nm);
@@ -327,6 +327,10 @@ static void mpiSplit(void)
   
   MPI_Type_vector(subFieldInfo_s.SUB_N_X, 1, subFieldInfo_s.SUB_N_PY, MPI_DCOMPLEX_YZ_COL, &MPI_DCOMPLEX_XY_PLANE);
   MPI_Type_commit(&MPI_DCOMPLEX_XY_PLANE);
+
+  printf("field.c subField\n");
+  printf("%d(%d, %d, %d)\n", subFieldInfo_s.Rank, subFieldInfo_s.SUB_N_X, subFieldInfo_s.SUB_N_Y, subFieldInfo_s.SUB_N_Z);
+
 }
 
 void field_outputElliptic(const char *fileName, dcomplex* data)

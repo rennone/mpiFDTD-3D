@@ -15,7 +15,7 @@ typedef struct {
  GLfloat r,g,b;
 }colorf;
 
-#define TEX_SIZE 256
+#define TEX_SIZE 512
 #define TEX_NX 512
 #define TEX_NY 512
 
@@ -234,10 +234,10 @@ void drawer_subFieldPaintImage3(dcomplex *phis)
   SubFieldInfo_S sInfo = field_getSubFieldInfo_S();
 
   //第一象限に
-  
-  double ux = 1.0*sInfo.SUB_N_X/TEX_SIZE;
-  double uy = 1.0*sInfo.SUB_N_Y/TEX_SIZE;
-  double uz = 1.0*sInfo.SUB_N_Z/TEX_SIZE;
+  //線の長さは,格子点の数よりも1小さい.
+  double ux = (sInfo.SUB_N_X-1.0)/TEX_SIZE;
+  double uy = (sInfo.SUB_N_Y-1.0)/TEX_SIZE;
+  double uz = (sInfo.SUB_N_Z-1.0)/TEX_SIZE;
   double u = max(max(ux,uy),uz);
   
   colorf c;
@@ -249,33 +249,26 @@ void drawer_subFieldPaintImage3(dcomplex *phis)
   double amp = 10; //描画するときは見やすいように増幅する
   int offsetT, offsetS;
 
-  offsetT = TEX_SIZE;
-  offsetS = TEX_SIZE;
-  //第一象限にxy平面を描画 xが横軸
-  for(i=0,x=0; i<TEX_SIZE && x<sInfo.SUB_N_PX; i++, x+=u){
-    for(j=0,y=0; j<TEX_SIZE && y<sInfo.SUB_N_PY; j++, y+=u){
-      /*
-  for(i=0,x=1; i<TEX_SIZE && x<sInfo.SUB_N_PX-1; i++, x+=u){
-    for(j=0,y=1; j<TEX_SIZE && y<sInfo.SUB_N_PY-1; j++, y+=u){
-      */
+  offsetT = 0;//TEX_SIZE;
+  offsetS = 0;//TEX_SIZE;
+  //第一象限にxy平面を描画 xが横軸.線形補完で一つ後ろの値も使う為,終了条件はPX-2になる.
+  for(i=0,x=1; i<TEX_SIZE && x<sInfo.SUB_N_PX-2; i++, x+=u){
+    for(j=0,y=1; j<TEX_SIZE && y<sInfo.SUB_N_PY-2; j++, y+=u){
       int index = field_subIndex( (int)x, (int)y ,sInfo.SUB_N_PZ/2);
       cphi = _cbilinear(phis,x, y, index, sInfo.SUB_N_PYZ, sInfo.SUB_N_PZ);
-      colorTransform(colorMode(cphi) * amp, &c);     
+      colorTransform(colorMode(cphi) * amp, &c);    
 
       texColor[i+offsetT][j+offsetS] = c;
     }
   }  
-
+/*
   
   //第二象限にxz平面を描画  xが横軸
 
   offsetT = 0;
   offsetS = TEX_SIZE;
-  /*
-  for(i=0,x=1; i<TEX_SIZE && x<sInfo.SUB_N_PX-1; i++, x+=u){
-  for(j=0,z=1; j<TEX_SIZE && z<sInfo.SUB_N_PZ-1; j++, z+=u){*/
-  for(i=0,x=0; i<TEX_SIZE && x<sInfo.SUB_N_PX; i++, x+=u){
-    for(j=0,z=0; j<TEX_SIZE && z<sInfo.SUB_N_PZ; j++, z+=u){
+  for(i=0,x=1; i<TEX_SIZE && x<sInfo.SUB_N_PX-2; i++, x+=u){
+    for(j=0,z=1; j<TEX_SIZE && z<sInfo.SUB_N_PZ-2; j++, z+=u){
       int index = field_subIndex( (int)x, sInfo.SUB_N_PY/2, (int)z);
       cphi = _cbilinear(phis, x, z, index, sInfo.SUB_N_PYZ, 1);
       colorTransform(colorMode(cphi) * amp, &c);
@@ -286,27 +279,24 @@ void drawer_subFieldPaintImage3(dcomplex *phis)
   //第三象限にzy平面を描画  (zが横軸)
   offsetT = 0;
   offsetS = 0;
-/*  for(i=0,y=1; i<TEX_SIZE && y<sInfo.SUB_N_PY-1; i++, y+=u){
-    for(j=0,z=1; j<TEX_SIZE && z<sInfo.SUB_N_PZ-1; j++, z+=u){*/
-  
-  for(i=0,z=0; i<TEX_SIZE && z<sInfo.SUB_N_PZ; i++, z+=u){
-    for(j=0,y=0; j<TEX_SIZE && y<sInfo.SUB_N_PY; j++, y+=u){
+  for(i=0,z=1; i<TEX_SIZE && z<sInfo.SUB_N_PZ-2; i++, z+=u){
+    for(j=0,y=1; j<TEX_SIZE && y<sInfo.SUB_N_PY-2; j++, y+=u){
       int index = field_subIndex( sInfo.SUB_N_PX/2, (int)y, (int)z);
       cphi = _cbilinear(phis, z, y, index, 1, sInfo.SUB_N_PZ);
       colorTransform(colorMode(cphi) * amp, &c);
       texColor[i+offsetT][j+offsetS] = c;
     }
-  }
+  }*/
 }
 
 void drawer_subFieldPaintModel3(double *phis)
 {
   SubFieldInfo_S sInfo = field_getSubFieldInfo_S();
   
-  //第一象限に  
-  double ux = 1.0*sInfo.SUB_N_X/TEX_SIZE;
-  double uy = 1.0*sInfo.SUB_N_Y/TEX_SIZE;
-  double uz = 1.0*sInfo.SUB_N_Z/TEX_SIZE;
+  //第一象限に
+  double ux = (sInfo.SUB_N_X-1.0)/TEX_SIZE;
+  double uy = (sInfo.SUB_N_Y-1.0)/TEX_SIZE;
+  double uz = (sInfo.SUB_N_Z-1.0)/TEX_SIZE;
   double u = max(max(ux,uy),uz);
   
   colorf c;
@@ -315,21 +305,29 @@ void drawer_subFieldPaintModel3(double *phis)
   int i,j;
   double x,y,z;
 
-  double amp = 100; //描画するときは見やすいように増幅する
   //第一象限にxy平面を描画 xが横軸
-  for(i=0,x=1; i<TEX_SIZE && x<sInfo.SUB_N_PX-1; i++, x+=u){
-    for(j=0,y=1; j<TEX_SIZE && y<sInfo.SUB_N_PY-1; j++, y+=u){
+  //モデルは端っこの
+  for(i=0,x=1; i<TEX_SIZE && x<sInfo.SUB_N_PX-2; i++, x+=u){
+    for(j=0,y=1; j<TEX_SIZE && y<sInfo.SUB_N_PY-2; j++, y+=u){
       int index = field_subIndex( (int)x, (int)y ,sInfo.SUB_N_PZ/2);
-      dphi = _dbilinear(phis,x, y, index, sInfo.SUB_N_PYZ, sInfo.SUB_N_PZ);    
+      dphi = _dbilinear(phis,x, y, index, sInfo.SUB_N_PYZ, sInfo.SUB_N_PZ);
 
       double n = 1-1.0/dphi;
-      texColor[i+TEX_SIZE][j+TEX_SIZE].r -= n;
-      texColor[i+TEX_SIZE][j+TEX_SIZE].g -= n;
-      texColor[i+TEX_SIZE][j+TEX_SIZE].b -= n;
+
+      //中心には線を引く
+      if(i==TEX_SIZE/2 || j==TEX_SIZE/2) {
+        texColor[i][j].r = 1;
+        texColor[i][j].g = 1;
+        texColor[i][j].b = 1;
+      } else {
+        texColor[i][j].r -= n;
+        texColor[i][j].g -= n;
+        texColor[i][j].b -= n;
+      }
     }
   }
   
-
+/*
   //第二象限にxz平面を描画  xが横軸
   for(i=0,x=1; i<TEX_SIZE && x<sInfo.SUB_N_PX-1; i++, x+=u){
     for(j=0,z=1; j<TEX_SIZE && z<sInfo.SUB_N_PZ-1; j++, z+=u){
@@ -353,7 +351,7 @@ void drawer_subFieldPaintModel3(double *phis)
       texColor[i][j].g -= n;
       texColor[i][j].b -= n; 
     }
-  }
+    }*/
 }
 
 void drawer_paintModel(int left, int bottom, int right, int top, int width, int height, double *phis)

@@ -145,6 +145,14 @@ static void update(void)
   calcMBH();
   Connection_SendRecvH();
   calcJDE();
+
+  /*
+  FieldInfo_S fInfo = field_getFieldInfo_S();
+  if(sInfo.OFFSET_X <= fInfo.N_PX/2 && sInfo.OFFSET_X+sInfo.SUB_N_X-1 >= fInfo.N_PX/2)
+  {
+    int w = field_subIndex(fInfo.N_PX/2-sInfo.OFFSET_X+1, sInfo.SUB_N_PY/2, sInfo.SUB_N_PZ/2);
+    Ez[w] = field_pointLight();
+    }*/
   scatteredWave(Ez, EPS_EZ, 0.5, 0.5, 0.0);
   Connection_SendRecvE();  
 }
@@ -195,28 +203,27 @@ static void scatteredWave(dcomplex *p, double *eps, double gapX, double gapY, do
 static void Connection_SendRecvE(void)
 {
   // (Hの計算に)必要な物は
-  // Eのright, top, backなので
-  // right, top, back を受け取り
-  // left , bottom, frontを送る
+  // Eのleft, bottm, backなので
+  // left, bottom, back を受け取り
+  // right , top, frontを送る
   MPI_Status status;
   SubFieldInfo_S subInfo_s = field_getSubFieldInfo_S();
   
   //左右のランクとの同期
-  //this needs only Hy[i-1, j] so send to right and recieve from left
-  int rtRecv = field_subIndex(subInfo_s.SUB_N_PX-1, 1, 1);  //最右に格納する
-  int ltSend = field_subIndex(1, 1, 1);                     //最左の一つ右を送る
-  MPI_Sendrecv(&Ez[ltSend], 1, MPI_DCOMPLEX_YZ_PLANE, subInfo_s.LtRank, 1,
-               &Ez[rtRecv], 1, MPI_DCOMPLEX_YZ_PLANE, subInfo_s.RtRank, 1, MPI_COMM_WORLD, &status);
-  MPI_Sendrecv(&Ey[ltSend], 1, MPI_DCOMPLEX_YZ_PLANE, subInfo_s.LtRank, 1,
-               &Ey[rtRecv], 1, MPI_DCOMPLEX_YZ_PLANE, subInfo_s.RtRank, 1, MPI_COMM_WORLD, &status);
+  int ltRecv = field_subIndex(0, 1, 1);                    //最左に格納する
+  int rtSend = field_subIndex(subInfo_s.SUB_N_PX-2, 1, 1); //最右の一つ左を送る
+  MPI_Sendrecv(&Ez[rtSend], 1, MPI_DCOMPLEX_YZ_PLANE, subInfo_s.RtRank, 1,
+               &Ez[ltRecv], 1, MPI_DCOMPLEX_YZ_PLANE, subInfo_s.LtRank, 1, MPI_COMM_WORLD, &status);
+  MPI_Sendrecv(&Ey[rtSend], 1, MPI_DCOMPLEX_YZ_PLANE, subInfo_s.RtRank, 1,
+               &Ey[ltRecv], 1, MPI_DCOMPLEX_YZ_PLANE, subInfo_s.LtRank, 1, MPI_COMM_WORLD, &status);
 
   //上下のランクとの同期
-  int bmSend = field_subIndex(1, 1, 1);                      //最下の一つ上を送る
-  int tpRecv = field_subIndex(1, subInfo_s.SUB_N_PY-1, 1);  //最上に格納する
-  MPI_Sendrecv(&Ez[bmSend], 1, MPI_DCOMPLEX_XZ_PLANE, subInfo_s.BmRank, 1,
-               &Ez[tpRecv], 1, MPI_DCOMPLEX_XZ_PLANE, subInfo_s.TpRank, 1, MPI_COMM_WORLD, &status);
-  MPI_Sendrecv(&Ex[bmSend], 1, MPI_DCOMPLEX_XZ_PLANE, subInfo_s.BmRank, 1,
-               &Ex[tpRecv], 1, MPI_DCOMPLEX_XZ_PLANE, subInfo_s.TpRank, 1, MPI_COMM_WORLD, &status);
+  int tpSend = field_subIndex(1, subInfo_s.SUB_N_PY-2, 1); //最上の一つ下を送る
+  int bmRecv = field_subIndex(1, 0, 1);                    //最下に格納する
+  MPI_Sendrecv(&Ez[tpSend], 1, MPI_DCOMPLEX_XZ_PLANE, subInfo_s.TpRank, 1,
+               &Ez[bmRecv], 1, MPI_DCOMPLEX_XZ_PLANE, subInfo_s.BmRank, 1, MPI_COMM_WORLD, &status);
+  MPI_Sendrecv(&Ex[tpSend], 1, MPI_DCOMPLEX_XZ_PLANE, subInfo_s.TpRank, 1,
+               &Ex[bmRecv], 1, MPI_DCOMPLEX_XZ_PLANE, subInfo_s.BmRank, 1, MPI_COMM_WORLD, &status);
 
   //前後のランクとの同期
   int frSend = field_subIndex(1, 1, 1);                     //最前の一つ上を送る
@@ -231,32 +238,31 @@ static void Connection_SendRecvE(void)
 static void Connection_SendRecvH(void)
 {  
   // (Eの計算に)必要な物は
-  // Hのleft, bottom, frontなので
-  // left, bottom, front を受け取り
-  // rihgt, top, backを送る
+  // Hのright, top, frontなので
+  // right, top, front を受け取り
+  // left, bottom, backを送る
   
   MPI_Status status;
-
   SubFieldInfo_S subInfo_s = field_getSubFieldInfo_S();
+  
   //左右のランクとの同期
-  //this needs only Hy[i-1, j] so send to right and recieve from left 
-  int ltRecv = field_subIndex(0                 , 1, 1); //最左の面に格納する為, xのインデックスは0  
-  int rtSend = field_subIndex(subInfo_s.SUB_N_PX-2, 1, 1);  //最右-1の値を送るため(最右には何も入っていないから), xのインデックスはSUB_N_PX-2
+  int rtRecv = field_subIndex(subInfo_s.SUB_N_PX-1 , 1, 1); //最右の面に格納する為, xのインデックスはN_PX-1
+  int ltSend = field_subIndex(1, 1, 1);           //最右+1の値を送るため(最右には何も入っていないから), xのインデックスはSUB_N_PX-2
 
   //Hz と Hyが左右を使う.
-  MPI_Sendrecv(&Hy[rtSend], 1, MPI_DCOMPLEX_YZ_PLANE, subInfo_s.RtRank, 1,
-               &Hy[ltRecv], 1, MPI_DCOMPLEX_YZ_PLANE, subInfo_s.LtRank, 1,MPI_COMM_WORLD, &status);
-  MPI_Sendrecv(&Hz[rtSend], 1, MPI_DCOMPLEX_YZ_PLANE, subInfo_s.RtRank, 1,
-               &Hz[ltRecv], 1, MPI_DCOMPLEX_YZ_PLANE, subInfo_s.LtRank, 1,MPI_COMM_WORLD, &status);
+  MPI_Sendrecv(&Hy[ltSend], 1, MPI_DCOMPLEX_YZ_PLANE, subInfo_s.LtRank, 1,
+               &Hy[rtRecv], 1, MPI_DCOMPLEX_YZ_PLANE, subInfo_s.RtRank, 1,MPI_COMM_WORLD, &status);
+  MPI_Sendrecv(&Hz[ltSend], 1, MPI_DCOMPLEX_YZ_PLANE, subInfo_s.LtRank, 1,
+               &Hz[rtRecv], 1, MPI_DCOMPLEX_YZ_PLANE, subInfo_s.RtRank, 1,MPI_COMM_WORLD, &status);
 
   //上下のランクとの同期
   //this needs only Hy[i,j-1] so send to top and recieve from bottom   
-  int bmRecv = field_subIndex(1,0                 , 1);
-  int tpSend = field_subIndex(1,subInfo_s.SUB_N_PY-2, 1);
-  MPI_Sendrecv(&Hx[tpSend], 1, MPI_DCOMPLEX_XZ_PLANE, subInfo_s.TpRank, 1,
-               &Hx[bmRecv], 1, MPI_DCOMPLEX_XZ_PLANE, subInfo_s.BmRank, 1, MPI_COMM_WORLD, &status);
-  MPI_Sendrecv(&Hz[tpSend], 1, MPI_DCOMPLEX_XZ_PLANE, subInfo_s.TpRank, 1,
-               &Hz[bmRecv], 1, MPI_DCOMPLEX_XZ_PLANE, subInfo_s.BmRank, 1, MPI_COMM_WORLD, &status);
+  int tpRecv = field_subIndex(1,subInfo_s.SUB_N_PY-1, 1);
+  int bmSend = field_subIndex(1,1, 1);
+  MPI_Sendrecv(&Hx[bmSend], 1, MPI_DCOMPLEX_XZ_PLANE, subInfo_s.BmRank, 1,
+               &Hx[tpRecv], 1, MPI_DCOMPLEX_XZ_PLANE, subInfo_s.TpRank, 1, MPI_COMM_WORLD, &status);
+  MPI_Sendrecv(&Hz[bmSend], 1, MPI_DCOMPLEX_XZ_PLANE, subInfo_s.BmRank, 1,
+               &Hz[tpRecv], 1, MPI_DCOMPLEX_XZ_PLANE, subInfo_s.TpRank, 1, MPI_COMM_WORLD, &status);
 
   //前後のランクとの同期
   int ftRecv = field_subIndex(1,1, 0);
@@ -539,7 +545,6 @@ static void setCoefficient()
         C_BZMZ1[w] = (2*eps + sig_hz_z) / (2*eps + sig_hz_y);
         C_BZMZ0[w] = (2*eps - sig_hz_z) / (2*eps + sig_hz_y);
     }
-
 }
 
 static void cpy(dcomplex *entire, dcomplex *region, int dx, int dy, int dz)
@@ -547,13 +552,17 @@ static void cpy(dcomplex *entire, dcomplex *region, int dx, int dy, int dz)
   //sub領域のregionをentireにコピー
   //SUB_N_PXとかは, 全プロセスで共通(なはず)なので, subInfo_sの値をそのまま使う
   //オフセットはプロセスごとに違うので外部から与える.
+  
   SubFieldInfo_S subInfo_s = field_getSubFieldInfo_S();  
   for(int i=1, x=dx; i<subInfo_s.SUB_N_PX-1; i++, x++)
+  {
     for(int j=1, y=dy; j<subInfo_s.SUB_N_PY-1; j++, y++)
       for(int k=1, z=dz; k<subInfo_s.SUB_N_PZ-1; k++, z++)
       {
-        entire[field_index(x,y,z)] = region[field_subIndex(i,j,k)];
+        int w = field_index(x,y,z);
+        entire[w] = region[field_subIndex(i,j,k)];
       }
+  }
 }
 
 //分割された領域をまとめる.
@@ -562,9 +571,17 @@ static dcomplex* unifyToRank0(dcomplex *phi)
   SubFieldInfo_S subInfo_s = field_getSubFieldInfo_S();
   FieldInfo_S fInfo_s = field_getFieldInfo_S();
   //マスターにすべて集める
-  if(subInfo_s.Rank == 0){
+  if(subInfo_s.Rank == 0)
+  {
     MPI_Status status;
     dcomplex *entire = newDComplex(fInfo_s.N_CELL);
+    for(int i=0; i<fInfo_s.N_CELL; i++)
+    {
+      if(creal(entire[i]) != 0)
+      {
+        printf("%lf %d\n", creal(entire[i]), i);
+      }
+    }
     cpy(entire, Ez, subInfo_s.OFFSET_X, subInfo_s.OFFSET_Y, subInfo_s.OFFSET_Z);
 
     dcomplex *tmp = newDComplex(subInfo_s.SUB_N_CELL);
@@ -572,11 +589,12 @@ static dcomplex* unifyToRank0(dcomplex *phi)
     for(int i=1; i<subInfo_s.Nproc; i++)
     {
       MPI_Recv(offset, 3, MPI_INT, i, 0, MPI_COMM_WORLD, &status);
-      MPI_Recv(tmp, subInfo_s.SUB_N_CELL, MPI_C_DOUBLE_COMPLEX, i, 1, MPI_COMM_WORLD, &status);
+      MPI_Recv(tmp, subInfo_s.SUB_N_CELL, MPI_C_DOUBLE_COMPLEX, i, 0, MPI_COMM_WORLD, &status);
+
       cpy(entire, tmp, offset[0], offset[1], offset[2]);      
     }
     free(tmp);
-    return entire;    
+    return entire;
   }
   else {
     int offset[3];
@@ -584,7 +602,8 @@ static dcomplex* unifyToRank0(dcomplex *phi)
     offset[1] = subInfo_s.OFFSET_Y;
     offset[2] = subInfo_s.OFFSET_Z;
     MPI_Send(offset, 3, MPI_INT, 0, 0, MPI_COMM_WORLD);
-    MPI_Send(Ez, subInfo_s.SUB_N_CELL, MPI_C_DOUBLE_COMPLEX, 0, 1, MPI_COMM_WORLD);    
+    MPI_Send(Ez, subInfo_s.SUB_N_CELL, MPI_C_DOUBLE_COMPLEX, 0, 0, MPI_COMM_WORLD);
+    
     return NULL; //マスター以外はNULLを返す.
   }
 }
@@ -596,7 +615,38 @@ static void miePrint()
   if( entire != NULL){
     field_outputElliptic("Ez.txt",entire);
     free(entire);
-  }  
+  }
+  /*
+  SubFieldInfo_S subInfo_s = field_getSubFieldInfo_S();
+  FieldInfo_S fInfo_s = field_getFieldInfo_S();
+  //マスターにすべて集める
+  if(subInfo_s.Rank == 0)
+  {
+    MPI_Status status;
+    dcomplex *entire = newDComplex(fInfo_s.N_CELL);
+
+    printf("ADSDASDADA\n");
+    cpy(entire, Ez, subInfo_s.OFFSET_X, subInfo_s.OFFSET_Y, subInfo_s.OFFSET_Z);
+    int offset[3];
+    for(int i=1; i<subInfo_s.Nproc; i++)
+    {
+      MPI_Recv(offset, 3, MPI_INT, i, 0, MPI_COMM_WORLD, &status);
+      MPI_Recv(Ez, subInfo_s.SUB_N_CELL, MPI_C_DOUBLE_COMPLEX, i, 1, MPI_COMM_WORLD, &status);
+      printf("BBBBBBBBB");
+      cpy(entire, Ez, offset[0], offset[1], offset[2]);      
+    }
+    field_outputElliptic("Ez.txt",entire);
+    free(entire);
+  } else {
+    int offset[3];
+    offset[0] = subInfo_s.OFFSET_X;
+    offset[1] = subInfo_s.OFFSET_Y;
+    offset[2] = subInfo_s.OFFSET_Z;
+    MPI_Send(offset, 3, MPI_INT, 0, 0, MPI_COMM_WORLD);
+    MPI_Send(Ez, subInfo_s.SUB_N_CELL, MPI_C_DOUBLE_COMPLEX, 0, 1, MPI_COMM_WORLD);
+    }*/
+  //勝手にfreeしないように吐き出しが終わるまでは,待つ.
+  MPI_Barrier(MPI_COMM_WORLD);
 }
 
 static void freeMemories()
