@@ -226,8 +226,8 @@ static void Connection_SendRecvE(void)
                &Ex[bmRecv], 1, MPI_DCOMPLEX_XZ_PLANE, subInfo_s.BmRank, 1, MPI_COMM_WORLD, &status);
 
   //前後のランクとの同期
-  int frSend = field_subIndex(1, 1, subInfo_s.SUB_N_PZ-2);  //最前の一つ上を送る(右手系なので手前が大きい)
-  int bkRecv = field_subIndex(1, 1, 0);                     //最後に格納する
+  int frSend = field_subIndex(0, 0, subInfo_s.SUB_N_PZ-2);//field_subIndex(1, 1, subInfo_s.SUB_N_PZ-2);  //最前面の一つ手前を送る(右手系なので手前が大きい)
+  int bkRecv = field_subIndex(0, 0, 0);//field_subIndex(1, 1, 0);                     //最背面に格納する
   MPI_Sendrecv(&Ex[frSend], 1, MPI_DCOMPLEX_XY_PLANE, subInfo_s.FtRank, 1,
                &Ex[bkRecv], 1, MPI_DCOMPLEX_XY_PLANE, subInfo_s.BkRank, 1, MPI_COMM_WORLD, &status);
   MPI_Sendrecv(&Ey[frSend], 1, MPI_DCOMPLEX_XY_PLANE, subInfo_s.FtRank, 1,
@@ -258,15 +258,15 @@ static void Connection_SendRecvH(void)
   //上下のランクとの同期
   //this needs only Hy[i,j-1] so send to top and recieve from bottom   
   int tpRecv = field_subIndex(1,subInfo_s.SUB_N_PY-1, 1);
-  int bmSend = field_subIndex(1,1, 1);
+  int bmSend = field_subIndex(1, 1, 1);
   MPI_Sendrecv(&Hx[bmSend], 1, MPI_DCOMPLEX_XZ_PLANE, subInfo_s.BmRank, 1,
                &Hx[tpRecv], 1, MPI_DCOMPLEX_XZ_PLANE, subInfo_s.TpRank, 1, MPI_COMM_WORLD, &status);
   MPI_Sendrecv(&Hz[bmSend], 1, MPI_DCOMPLEX_XZ_PLANE, subInfo_s.BmRank, 1,
                &Hz[tpRecv], 1, MPI_DCOMPLEX_XZ_PLANE, subInfo_s.TpRank, 1, MPI_COMM_WORLD, &status);
 
-  //前後のランクとの同期
-  int ftRecv = field_subIndex(1, 1, subInfo_s.SUB_N_PZ-1);
-  int bkSend = field_subIndex(1, 1, 1);
+  //前後のランクとの同期=>これは, 配列が2段階に隙間があるから.平面全部を同期しないと行けない
+  int ftRecv = field_subIndex(0, 0, subInfo_s.SUB_N_PZ-1);//field_subIndex(1, 1, subInfo_s.SUB_N_PZ-1);
+  int bkSend = field_subIndex(0, 0, 1);
 
   MPI_Sendrecv(&Hx[bkSend], 1, MPI_DCOMPLEX_XY_PLANE, subInfo_s.BkRank, 1,
                &Hx[ftRecv], 1, MPI_DCOMPLEX_XY_PLANE, subInfo_s.FtRank, 1, MPI_COMM_WORLD, &status);
