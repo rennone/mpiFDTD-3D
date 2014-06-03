@@ -148,6 +148,7 @@ static void update(void)
 
   pointLightInCenter(Ez);
 //  scatteredWave(Ez, EPS_EZ, 0.5, 0.5, 0.0);
+
   Connection_SendRecvE();  
 }
 
