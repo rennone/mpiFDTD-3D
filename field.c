@@ -335,8 +335,7 @@ static void mpiSplit(void)
   MPI_Type_vector(subFieldInfo_s.SUB_N_X, 1, subFieldInfo_s.SUB_N_PY, MPI_DCOMPLEX_YZ_COL, &MPI_DCOMPLEX_XY_PLANE);
   MPI_Type_commit(&MPI_DCOMPLEX_XY_PLANE);  */
   
-  printf("field.c subField\n");
-  printf("%d(%d, %d, %d)\n", subFieldInfo_s.Rank, subFieldInfo_s.SUB_N_X, subFieldInfo_s.SUB_N_Y, subFieldInfo_s.SUB_N_Z);
+  printf("%d(%d, %d, %d)\n", subFieldInfo_s.Rank, subFieldInfo_s.OFFSET_X, subFieldInfo_s.OFFSET_Y, subFieldInfo_s.OFFSET_Z);
 
 }
 

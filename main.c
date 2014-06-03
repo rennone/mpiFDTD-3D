@@ -43,7 +43,7 @@ int main( int argc, char *argv[] )
   fInfo.h_u_nm    = 10;
   fInfo.pml       = 10;
   fInfo.lambda_nm = 100;
-  fInfo.stepNum   = 500;
+  fInfo.stepNum   = 5000;
   fInfo.theta_deg = 0;
   fInfo.phi_deg   = 0;
   enum MODEL modelType   = NO_MODEL;
