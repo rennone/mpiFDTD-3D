@@ -261,8 +261,7 @@ void drawer_subFieldPaintImage3(dcomplex *phis)
       texColor[i+offsetT][j+offsetS] = c;
     }
   }  
-/*
-  
+/*  
   //第二象限にxz平面を描画  xが横軸
 
   offsetT = 0;

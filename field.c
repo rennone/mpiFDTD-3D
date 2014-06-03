@@ -341,7 +341,7 @@ void field_outputElliptic(const char *fileName, dcomplex* data)
   FieldInfo_S fInfo_s = field_getFieldInfo_S();
   WaveInfo_S wInfo_s = field_getWaveInfo_S();
   
-  int z = fInfo_s.N_PZ/2;  
+  int z = fInfo_s.N_PZ/2;
   for(int ang=180; ang >=0; ang--)
   {
     double rad = ang*M_PI/180.0;
