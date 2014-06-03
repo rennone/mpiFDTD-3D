@@ -109,7 +109,7 @@ dcomplex* mpi_fdtd3D_upml_getHx(void){  return Hx;}
 dcomplex* mpi_fdtd3D_upml_getHy(void){  return Hy;}
 dcomplex* mpi_fdtd3D_upml_getHz(void){  return Hz;}
 
-double*   mpi_fdtd3D_upml_getEps(void){  return EPS_EZ;}
+double*   mpi_fdtd3D_upml_getEps(void){  return EPS_EY;}
 
 void (* mpi_fdtd3D_upml_getUpdate(void))(void){
   return update;
@@ -146,8 +146,8 @@ static void update(void)
   Connection_SendRecvH();
   calcJDE();
 
-  pointLightInCenter(Ey);
-//  scatteredWave(Ez, EPS_EZ, 0.5, 0.5, 0.0);
+//  pointLightInCenter(Ey);
+  scatteredWave(Ey, EPS_EY, 0.5, 0.5, 0.0);
 
   Connection_SendRecvE();  
 }
@@ -466,6 +466,7 @@ static void initializeElectroMagneticField()
   memset(Bz, 0, sizeof(dcomplex)*sInfo.SUB_N_CELL);    
 }
 
+
 static void setCoefficient()
 {
   //Hz, Ex, Eyそれぞれでσx, σx*, σy, σy*が違う(場所が違うから)
@@ -590,7 +591,7 @@ static dcomplex* unifyToRank0(dcomplex *phi)
         printf("%lf %d\n", creal(entire[i]), i);
       }
     }
-    cpy(entire, Ez, subInfo_s.OFFSET_X, subInfo_s.OFFSET_Y, subInfo_s.OFFSET_Z);
+    cpy(entire, phi, subInfo_s.OFFSET_X, subInfo_s.OFFSET_Y, subInfo_s.OFFSET_Z);
 
     dcomplex *tmp = newDComplex(subInfo_s.SUB_N_CELL);
     int offset[3];
@@ -610,7 +611,7 @@ static dcomplex* unifyToRank0(dcomplex *phi)
     offset[1] = subInfo_s.OFFSET_Y;
     offset[2] = subInfo_s.OFFSET_Z;
     MPI_Send(offset, 3, MPI_INT, 0, 0, MPI_COMM_WORLD);
-    MPI_Send(Ez, subInfo_s.SUB_N_CELL, MPI_C_DOUBLE_COMPLEX, 0, 0, MPI_COMM_WORLD);
+    MPI_Send(phi, subInfo_s.SUB_N_CELL, MPI_C_DOUBLE_COMPLEX, 0, 0, MPI_COMM_WORLD);
     
     return NULL; //マスター以外はNULLを返す.
   }
@@ -619,40 +620,11 @@ static dcomplex* unifyToRank0(dcomplex *phi)
 //---------------------メモリの解放--------------------//
 static void miePrint()
 {
-  dcomplex *entire = unifyToRank0(Ez);
+  dcomplex *entire = unifyToRank0(Ey);
   if( entire != NULL){
-    field_outputElliptic("Ez.txt",entire);
+    field_outputElliptic("Ey.txt",entire);
     free(entire);
   }
-  /*
-  SubFieldInfo_S subInfo_s = field_getSubFieldInfo_S();
-  FieldInfo_S fInfo_s = field_getFieldInfo_S();
-  //マスターにすべて集める
-  if(subInfo_s.Rank == 0)
-  {
-    MPI_Status status;
-    dcomplex *entire = newDComplex(fInfo_s.N_CELL);
-
-    printf("ADSDASDADA\n");
-    cpy(entire, Ez, subInfo_s.OFFSET_X, subInfo_s.OFFSET_Y, subInfo_s.OFFSET_Z);
-    int offset[3];
-    for(int i=1; i<subInfo_s.Nproc; i++)
-    {
-      MPI_Recv(offset, 3, MPI_INT, i, 0, MPI_COMM_WORLD, &status);
-      MPI_Recv(Ez, subInfo_s.SUB_N_CELL, MPI_C_DOUBLE_COMPLEX, i, 1, MPI_COMM_WORLD, &status);
-      printf("BBBBBBBBB");
-      cpy(entire, Ez, offset[0], offset[1], offset[2]);      
-    }
-    field_outputElliptic("Ez.txt",entire);
-    free(entire);
-  } else {
-    int offset[3];
-    offset[0] = subInfo_s.OFFSET_X;
-    offset[1] = subInfo_s.OFFSET_Y;
-    offset[2] = subInfo_s.OFFSET_Z;
-    MPI_Send(offset, 3, MPI_INT, 0, 0, MPI_COMM_WORLD);
-    MPI_Send(Ez, subInfo_s.SUB_N_CELL, MPI_C_DOUBLE_COMPLEX, 0, 1, MPI_COMM_WORLD);
-    }*/
   //勝手にfreeしないように吐き出しが終わるまでは,待つ.
   MPI_Barrier(MPI_COMM_WORLD);
 }

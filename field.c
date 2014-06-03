@@ -321,17 +321,16 @@ static void mpiSplit(void)
                   subFieldInfo_s.SUB_N_PYZ, MPI_C_DOUBLE_COMPLEX, &MPI_DCOMPLEX_XZ_PLANE );
   MPI_Type_commit(&MPI_DCOMPLEX_XZ_PLANE);
 
-  
-  //XYは隙間が2段階あるので,一気に登録は出来ない.
-  
-  MPI_Type_vector(subFieldInfo_s.SUB_N_Y, 1, subFieldInfo_s.SUB_N_PZ, MPI_C_DOUBLE_COMPLEX, &MPI_DCOMPLEX_YZ_COL);
-  MPI_Type_commit(&MPI_DCOMPLEX_YZ_COL);
 
-  
-  MPI_Type_vector(subFieldInfo_s.SUB_N_X*subFieldInfo_s.SUB_N_Y, 1, subFieldInfo_s.SUB_N_PZ, MPI_C_DOUBLE_COMPLEX, &MPI_DCOMPLEX_XY_PLANE);
+  //XY平面は連続する領域が無い(隙間が2種類ある)ので, のりしろも含めた全領域を同期する必要がある.
+  MPI_Type_vector(subFieldInfo_s.SUB_N_PX*subFieldInfo_s.SUB_N_PY, 1, subFieldInfo_s.SUB_N_PZ, MPI_C_DOUBLE_COMPLEX, &MPI_DCOMPLEX_XY_PLANE);
   MPI_Type_commit(&MPI_DCOMPLEX_XY_PLANE);
   
   /*
+  //XYは隙間が2段階あるので,一気に登録は出来ない.  
+  MPI_Type_vector(subFieldInfo_s.SUB_N_Y, 1, subFieldInfo_s.SUB_N_PZ, MPI_C_DOUBLE_COMPLEX, &MPI_DCOMPLEX_YZ_COL);
+  MPI_Type_commit(&MPI_DCOMPLEX_YZ_COL);
+
   MPI_Type_vector(subFieldInfo_s.SUB_N_X, 1, subFieldInfo_s.SUB_N_PY, MPI_DCOMPLEX_YZ_COL, &MPI_DCOMPLEX_XY_PLANE);
   MPI_Type_commit(&MPI_DCOMPLEX_XY_PLANE);  */
   

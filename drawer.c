@@ -168,30 +168,32 @@ void drawer_paintImage(int left, int bottom, int right, int top, int width, int 
 static void paint(dcomplex *phis, double *eps, int startIndex, int lengthX, int lengthY, int offsetX, int offsetY, double u, int quadrant)
 {
   colorf c;
-  double amp = 1000;
+  double amp = 10;
   int ox = (quadrant&1)*TEX_SIZE;       //原点
   int oy = ((quadrant>>1)&1)*TEX_SIZE;  //原点 
   double x, y;
   int i,j;
   for(i=0, x=0; i<TEX_SIZE && x<lengthX-1; i++, x+=u){    
-    for(j=0, y=0; j<TEX_SIZE && y<lengthY-1; j++, y+=u){      
-      dcomplex cphi = _cbilinear(phis, x, y, startIndex + floor(x)*offsetX + floor(y)*offsetY, offsetX, offsetY);      
-      colorTransform(colorMode(cphi)*amp, &c);
-
-      texColor[i+ox][j+oy] = c;
-
-      double dphi = _dbilinear(eps,x, y, startIndex + floor(x)*offsetX + floor(y)*offsetY, offsetX, offsetY);
-      double n = 1-1.0/dphi;
+    for(j=0, y=0; j<TEX_SIZE && y<lengthY-1; j++, y+=u){
       //中心には線を引く
       if(i==TEX_SIZE/2 || j==TEX_SIZE/2) {
-        texColor[i+ox][j+oy].r = 0;
+        texColor[i+ox][j+oy].r = 1;
         texColor[i+ox][j+oy].g = 0;
         texColor[i+ox][j+oy].b = 0;
-      } else {
-        texColor[i+ox][j+oy].r -= n;
-        texColor[i+ox][j+oy].g -= n;
-        texColor[i+ox][j+oy].b -= n;
-      }      
+        continue;
+      }
+
+      int index = startIndex + floor(x)*offsetX + floor(y)*offsetY;
+      dcomplex cphi = _cbilinear(phis, x, y, index , offsetX, offsetY);      
+      colorTransform(colorMode(cphi)*amp, &c);
+      texColor[i+ox][j+oy] = c;
+      
+      double deps = eps[index];//_dbilinear(eps, x, y, index, offsetX, offsetY);
+      double n = 1-1.0/deps;
+
+      texColor[i+ox][j+oy].r -= n;
+      texColor[i+ox][j+oy].g -= n;
+      texColor[i+ox][j+oy].b -= n;
     }
   }
 }
@@ -252,19 +254,34 @@ void drawer_subFieldPaintImage3(dcomplex *phis, double *eps)
   double uz = (sInfo.SUB_N_Z-1.0)/TEX_SIZE;
   double u = max(max(ux,uy),uz);
   int w;
-  /*
+
+  FieldInfo_S fInfo = field_getFieldInfo_S();
+  bool XX = (sInfo.OFFSET_X < fInfo.N_PX/2) && ( fInfo.N_PX/2 <= sInfo.OFFSET_X + sInfo.SUB_N_X);
+  bool YY = (sInfo.OFFSET_Y < fInfo.N_PY/2) && ( fInfo.N_PY/2 <= sInfo.OFFSET_Y + sInfo.SUB_N_Y);
+  bool ZZ = (sInfo.OFFSET_Z < fInfo.N_PZ/2) && ( fInfo.N_PZ/2 <= sInfo.OFFSET_Z + sInfo.SUB_N_Z);
+
+
+  int fixedX = fInfo.N_PX/2 - sInfo.OFFSET_X;
+  int fixedY = fInfo.N_PY/2 - sInfo.OFFSET_Y;
+  int fixedZ = fInfo.N_PZ/2 - sInfo.OFFSET_Z;
+
 //第3象限(左下)にXY平面
-  int w = field_subIndex(1, 1, sInfo.SUB_N_PZ/2);
+  if(ZZ){
+  w = field_subIndex(1, 1, fixedZ);
   paint(phis,eps, w, sInfo.SUB_N_X, sInfo.SUB_N_Y, sInfo.SUB_N_PYZ, sInfo.SUB_N_PZ ,u, 0);
-  */
-//第4象限(右下)にXZ平面
-  w = field_subIndex(1, sInfo.SUB_N_PZ/2, 1);
-  paint(phis,eps, w, sInfo.SUB_N_X, sInfo.SUB_N_Z, sInfo.SUB_N_PYZ, 1 ,u, 0);
-/*
-//第2象限(左上)にZY平面
-  w = field_subIndex(sInfo.SUB_N_PX/2, 1, 1);
+  }
+  /*
+  //第4象限(右下)にXZ平面
+  if(YY){
+  w = field_subIndex(1, fixedY, 1);
+  paint(phis, eps, w, sInfo.SUB_N_X, sInfo.SUB_N_Z, sInfo.SUB_N_PYZ, 1 ,u, 0);
+  }
+  
+  //第2象限(左上)にZY平面
+  if(XX){
+  w = field_subIndex(fixedX, 1, 1);
   paint(phis,eps, w, sInfo.SUB_N_Z, sInfo.SUB_N_Y, 1, sInfo.SUB_N_PZ, u, 2);
-*/
+  }*/
 }
 
 void drawer_paintModel(int left, int bottom, int right, int top, int width, int height, double *phis)
