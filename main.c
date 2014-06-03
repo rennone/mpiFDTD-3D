@@ -99,8 +99,8 @@ static void drawSubField()
 
   FieldInfo_S fInfo = field_getFieldInfo_S();
   SubFieldInfo_S sInfo = field_getSubFieldInfo_S();
-  bool ZZ = (sInfo.OFFSET_Z < fInfo.N_PZ/2) && ( fInfo.N_PZ/2 <= sInfo.OFFSET_Z + sInfo.SUB_N_Z);
-  if(ZZ)
+    bool YY = (sInfo.OFFSET_Y < fInfo.N_PY/2) && ( fInfo.N_PY/2 <= sInfo.OFFSET_Y + sInfo.SUB_N_Y);
+  if(YY)
     drawer_subFieldPaintImage3(data3D, eps3D);
 }
 
