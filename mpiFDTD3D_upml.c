@@ -146,7 +146,7 @@ static void update(void)
   Connection_SendRecvH();
   calcJDE();
 
-  pointLightInCenter(Ez);
+  pointLightInCenter(Ey);
 //  scatteredWave(Ez, EPS_EZ, 0.5, 0.5, 0.0);
 
   Connection_SendRecvE();  
