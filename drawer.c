@@ -23,7 +23,7 @@ typedef struct {
  GLfloat r,g,b;
 }colorf;
 
-#define TEX_SIZE 512
+#define TEX_SIZE 256
 #define TEX_NX 512
 #define TEX_NY 512
 
@@ -270,18 +270,18 @@ void drawer_subFieldPaintImage3(dcomplex *phis, double *eps)
   w = field_subIndex(1, 1, fixedZ);
   paint(phis,eps, w, sInfo.SUB_N_X, sInfo.SUB_N_Y, sInfo.SUB_N_PYZ, sInfo.SUB_N_PZ ,u, 0);
   }
-  /*
+  
   //第4象限(右下)にXZ平面
   if(YY){
   w = field_subIndex(1, fixedY, 1);
-  paint(phis, eps, w, sInfo.SUB_N_X, sInfo.SUB_N_Z, sInfo.SUB_N_PYZ, 1 ,u, 0);
+  paint(phis, eps, w, sInfo.SUB_N_X, sInfo.SUB_N_Z, sInfo.SUB_N_PYZ, 1 ,u, 1);
   }
   
   //第2象限(左上)にZY平面
   if(XX){
   w = field_subIndex(fixedX, 1, 1);
   paint(phis,eps, w, sInfo.SUB_N_Z, sInfo.SUB_N_Y, 1, sInfo.SUB_N_PZ, u, 2);
-  }*/
+  }
 }
 
 void drawer_paintModel(int left, int bottom, int right, int top, int width, int height, double *phis)

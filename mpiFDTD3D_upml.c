@@ -146,8 +146,8 @@ static void update(void)
   Connection_SendRecvH();
   calcJDE();
 
-//  pointLightInCenter(Ey);
-  scatteredWave(Ey, EPS_EY, 0.5, 0.5, 0.0);
+  pointLightInCenter(Ey);
+//  scatteredWave(Ey, EPS_EY, 0.5, 0.5, 0.0);
 
   Connection_SendRecvE();  
 }
@@ -188,7 +188,6 @@ static void scatteredWave(dcomplex *p, double *eps, double gapX, double gapY, do
   int offsetY = subInfo_s.OFFSET_Y + gapY;
   int offsetZ = subInfo_s.OFFSET_Z + gapZ;
   int w = field_subIndex(1,1,1);
-
   double ray_coef_EPS_0 = ray_coef*EPSILON_0_S;
   for(int i=0; i<endX; i++, w+=nextX) 
     for(int j=0; j<endY; j++, w+=2) 
@@ -488,9 +487,9 @@ static void setCoefficient()
       for(int k=1; k<sInfo.SUB_N_PZ-1; k++)
       {
         int w = field_subIndex(i,j,k);
-        int x = i-1+sInfo.OFFSET_X;
-        int y = j-1+sInfo.OFFSET_Y;
-        int z = k-1+sInfo.OFFSET_Z;
+        int x = i+sInfo.OFFSET_X; //-1する必要はない.
+        int y = j+sInfo.OFFSET_Y;
+        int z = k+sInfo.OFFSET_Z;
         
         EPS_EX[w] = models_eps(x    ,y+0.5,z+0.5,D_Y); //todo 
         EPS_EY[w] = models_eps(x+0.5,y    ,z+0.5,D_X);
@@ -563,15 +562,17 @@ static void cpy(dcomplex *entire, dcomplex *region, int dx, int dy, int dz)
   //オフセットはプロセスごとに違うので外部から与える.
   
   SubFieldInfo_S subInfo_s = field_getSubFieldInfo_S();  
-  for(int i=1, x=dx; i<subInfo_s.SUB_N_PX-1; i++, x++)
+/*  for(int i=1, x=dx; i<subInfo_s.SUB_N_PX-1; i++, x++)
   {
     for(int j=1, y=dy; j<subInfo_s.SUB_N_PY-1; j++, y++)
-      for(int k=1, z=dz; k<subInfo_s.SUB_N_PZ-1; k++, z++)
+    for(int k=1, z=dz; k<subInfo_s.SUB_N_PZ-1; k++, z++)*/
+  for(int i=1; i<subInfo_s.SUB_N_PX-1; i++)  
+    for(int j=1; j<subInfo_s.SUB_N_PY-1; j++)
+      for(int k=1; k<subInfo_s.SUB_N_PZ-1; k++)
       {
-        int w = field_index(x,y,z);
+        int w = field_index(i+dx,j+dy,k+dz);
         entire[w] = region[field_subIndex(i,j,k)];
-      }
-  }
+      }  
 }
 
 //分割された領域をまとめる.
@@ -584,13 +585,6 @@ static dcomplex* unifyToRank0(dcomplex *phi)
   {
     MPI_Status status;
     dcomplex *entire = newDComplex(fInfo_s.N_CELL);
-    for(int i=0; i<fInfo_s.N_CELL; i++)
-    {
-      if(creal(entire[i]) != 0)
-      {
-        printf("%lf %d\n", creal(entire[i]), i);
-      }
-    }
     cpy(entire, phi, subInfo_s.OFFSET_X, subInfo_s.OFFSET_Y, subInfo_s.OFFSET_Z);
 
     dcomplex *tmp = newDComplex(subInfo_s.SUB_N_CELL);
@@ -620,9 +614,11 @@ static dcomplex* unifyToRank0(dcomplex *phi)
 //---------------------メモリの解放--------------------//
 static void miePrint()
 {
+  const char *file_name = "Ey.txt";
   dcomplex *entire = unifyToRank0(Ey);
   if( entire != NULL){
-    field_outputElliptic("Ey.txt",entire);
+//    field_outputElliptic(file_name, entire);
+    field_outputAllDataComplex("Eyy.txt", entire);
     free(entire);
   }
   //勝手にfreeしないように吐き出しが終わるまでは,待つ.

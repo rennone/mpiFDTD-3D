@@ -13,6 +13,8 @@ FieldInfo_S fieldInfo_s;
 SubFieldInfo_S subFieldInfo_s;
 WaveInfo_S waveInfo_s;
 
+static double Z_0_S;
+
 //MPI分割したときのフィールドパラメータ
 static MPI_Datatype MPI_DCOMPLEX_YZ_COL; //YZ平面の列に対応する(Zが列, Yが行), これをsize(X)繰り返せばXY平面全部とって来れるようにする.
 
@@ -36,7 +38,6 @@ static void mpiSplit(void);
  double field_toCellUnit(const double phisycalUnit){
   return phisycalUnit/fieldInfo.h_u_nm;   //セル単位に変換 
 }
-
  double field_toPhisycalUnit(const double cellUnit){
   return cellUnit*fieldInfo.h_u_nm;    //物理単位(nm)に変換
 }
@@ -57,7 +58,17 @@ WaveInfo_S field_getWaveInfo_S()         { return waveInfo_s;}
 SubFieldInfo_S field_getSubFieldInfo_S() { return subFieldInfo_s;}
 FieldInfo_S field_getFieldInfo_S()       { return fieldInfo_s;}
 FieldInfo field_getFieldInfo()   { return fieldInfo;}
+NTFFInfo  field_getNTFFInfo(){  return ntff_info;}
 
+double field_getZ_0_S(){ return Z_0_S;}
+double  field_getK(){  return waveInfo_s.K_s;}
+double  field_getRayCoef(){  return ray_coef;}
+double  field_getOmega(){  return waveInfo_s.Omega_s;}
+double  field_getLambda(){  return waveInfo_s.Lambda_s;}
+double field_getTheta(){  return waveInfo_s.Theta_deg;}
+double field_getPhi(){  return waveInfo_s.Phi_deg;}
+double  field_getTime(){  return time;}
+double  field_getMaxTime(){  return maxTime;}
 
 int field_index(int i, int j, int k){
     return i*fieldInfo_s.N_PYZ + j*fieldInfo_s.N_PZ+k;
@@ -102,9 +113,19 @@ int field_subFront(int ind){
 int field_subBack(int ind){
   return ind-1;
 }
+int field_subToOneX(int i){
+  return i-1+subFieldInfo_s.OFFSET_X;
+}
+int field_subToOneY(int j){
+  return j-1+subFieldInfo_s.OFFSET_Y;
+}
+int field_subToOneZ(int k){
+  return k-1+subFieldInfo_s.OFFSET_Z;
+}
 
 void field_init(FieldInfo field_info)
 {
+  Z_0_S = sqrt(MU_0_S/EPSILON_0_S);
   //フィールド情報の保存(最初にしないとtoCellUnit, PhisicalUnitが使えない.
   fieldInfo = field_info;
   
@@ -153,19 +174,6 @@ void field_init(FieldInfo field_info)
   ntff_info.RFperC = len*2;
   ntff_info.arraySize = maxTime + 2*ntff_info.RFperC;
 }
-
-//-------------------getter-------------------//
-double  field_getK(){  return waveInfo_s.K_s;}
-double  field_getRayCoef(){  return ray_coef;}
-double  field_getOmega(){  return waveInfo_s.Omega_s;}
-double  field_getLambda(){  return waveInfo_s.Lambda_s;}
-double field_getTheta(){  return waveInfo_s.Theta_deg;}
-double field_getPhi(){  return waveInfo_s.Phi_deg;}
-double  field_getTime(){  return time;}
-double  field_getMaxTime(){  return maxTime;}
-
-NTFFInfo  field_getNTFFInfo(){  return ntff_info;}
-
 
 //----------------------------------------//
  double field_sigmaX(const double x, const double __y, const double __z)
@@ -306,9 +314,10 @@ static void mpiSplit(void)
   subFieldInfo_s.SUB_N_PYZ  = subFieldInfo_s.SUB_N_PY*subFieldInfo_s.SUB_N_PZ;
 
   //ランクのインデックスではなく, セル単位のオフセットなのでSUB_N_Xずれる
-  subFieldInfo_s.OFFSET_X  = coordinates[0] * subFieldInfo_s.SUB_N_X;
-  subFieldInfo_s.OFFSET_Y  = coordinates[1] * subFieldInfo_s.SUB_N_Y;
-  subFieldInfo_s.OFFSET_Z  = coordinates[2] * subFieldInfo_s.SUB_N_Z;
+  // -1はのりしろのがあるため, sub領域の0番目は,隣の領域(左,下,後ろ)の領域をさすため
+  subFieldInfo_s.OFFSET_X  = coordinates[0] * subFieldInfo_s.SUB_N_X - 1;
+  subFieldInfo_s.OFFSET_Y  = coordinates[1] * subFieldInfo_s.SUB_N_Y - 1;
+  subFieldInfo_s.OFFSET_Z  = coordinates[2] * subFieldInfo_s.SUB_N_Z - 1;
 
   //YZ平面の同期をとるための型を定義
   //SUB_N_Z個の連続したデータ, SUB_N_PZ跳び(次のデータまでpz-p = 2個の隙間がある)に, SUB_N_Y行 取ってくる事になる
@@ -334,7 +343,7 @@ static void mpiSplit(void)
   MPI_Type_vector(subFieldInfo_s.SUB_N_X, 1, subFieldInfo_s.SUB_N_PY, MPI_DCOMPLEX_YZ_COL, &MPI_DCOMPLEX_XY_PLANE);
   MPI_Type_commit(&MPI_DCOMPLEX_XY_PLANE);  */
   
-  printf("%d(%d, %d, %d)\n", subFieldInfo_s.Rank, subFieldInfo_s.OFFSET_X, subFieldInfo_s.OFFSET_Y, subFieldInfo_s.OFFSET_Z);
+  printf("field.c rank=%d, offset(%d, %d, %d)\n", subFieldInfo_s.Rank, subFieldInfo_s.OFFSET_X, subFieldInfo_s.OFFSET_Y, subFieldInfo_s.OFFSET_Z);
 
 }
 
@@ -354,9 +363,20 @@ void field_outputElliptic(const char *fileName, dcomplex* data)
     double y = 1.2*wInfo_s.Lambda_s*sin(rad)+fInfo_s.N_PY/2.0;
     int index = field_index((int)x, (int)y, z);
     dcomplex phi = cbilinear(data, x, y, index, fInfo_s.N_PYZ, fInfo_s.N_PZ);
-    fprintf(fp, "%d, %lf \n", 180-ang, cnorm(phi));
+    fprintf(fp, "%d, %.18lf \n", 180-ang, cnorm(phi));
   }
   
   fclose(fp);
   printf("output to %s end\n", fileName);
+}
+
+void field_outputAllDataComplex(const char *fileName,dcomplex* data)
+{
+  FILE *fp = openFile(fileName);
+  FieldInfo_S fInfo_s = field_getFieldInfo_S();
+  for(int i=0; i<fInfo_s.N_CELL; i++)
+  {
+    fprintf(fp,  "%.18lf %.18lf \n", creal(data[i]), cimag(data[i]));
+  }
+  fclose(fp);
 }

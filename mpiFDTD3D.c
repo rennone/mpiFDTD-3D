@@ -231,9 +231,9 @@ static void setCoefficient()
       for(int k=1; k<sInfo.SUB_N_PZ-1; k++)
       {
         int w = field_subIndex(i,j,k);
-        int x = i-1+sInfo.OFFSET_X;
-        int y = j-1+sInfo.OFFSET_Y;
-        int z = k-1+sInfo.OFFSET_Z;
+        int x = i+sInfo.OFFSET_X;
+        int y = j+sInfo.OFFSET_Y;
+        int z = k+sInfo.OFFSET_Z;
         EPS_EX[w] = models_eps(x    ,y+0.5,z+0.5,D_Y); //todo 
         EPS_EY[w] = models_eps(x+0.5,y    ,z+0.5,D_X);
         EPS_EZ[w] = models_eps(x+0.5,y+0.5,z    ,D_XY);

@@ -51,7 +51,8 @@ typedef struct FieldInfo_S
 //MPI分割後の小領域のパラメータ
 typedef struct SubFieldInfo_S
 {
-  int OFFSET_X, OFFSET_Y, OFFSET_Z; //左下からのオフセット量(セル)
+  //小領域のインデックスが全体領域のどのインデックスと対応するかのオフセット量
+  int OFFSET_X, OFFSET_Y, OFFSET_Z;  // sub.x + OFFSET_X = field.xになる(-1する必要なし).
   int SUB_N_X, SUB_N_Y, SUB_N_Z;
   int SUB_N_PX, SUB_N_PY, SUB_N_PZ;
   int SUB_N_CELL;
@@ -75,9 +76,10 @@ typedef struct WaveInfo_S
 // 3Dでは1/√3が収束条件
 #define C_0_S 0.5735
 static const double EPSILON_0_S = 1.0;
-static const double MU_0_S = 4;//1.0/C_0_S/C_0_S;
-#define Z_0_S = sqrt(MU_0_S/EPSILON_0_S) //todo  あらかじめ計算しておく
-//static const double Z_0_S = 1.41422712488; //√(1.0/0.7/0.7/1.0) = √(μ/ε);
+static const double MU_0_S = 1.0/C_0_S/C_0_S;
+
+//Z0はm0,e0を計算して求まる値なのでコンパイル時に計算できない.
+extern double field_getZ_0_S();
 
 //インデックスを取ってくる 
 extern int field_index(const int, const int, const int);
@@ -95,6 +97,10 @@ extern int field_subTop(int ind);
 extern int field_subBottom(int ind);
 extern int field_subFront(int ind);
 extern int field_subBack(int ind);
+
+extern int field_subToOneX(int i);
+extern int field_subToOneY(int j);
+extern int field_subToOneZ(int z);
 
 //フィールドの横,縦の大きさ, 1セルのサイズ, pmlレイヤの数, 波長(nm), 計算ステップ
 //フィールドの横,縦の大きさ, 1セルのサイズ, pmlレイヤの数, 波長(nm), 計算ステップ
