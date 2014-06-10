@@ -40,7 +40,7 @@ static void setMPI3D()
   initMethod   = mpi_fdtd3D_upml_getInit();
   finishMethod = mpi_fdtd3D_upml_getFinish();
   getEpsMethod = mpi_fdtd3D_upml_getEps;
-  getDrawData  = mpi_fdtd3D_upml_getEy;
+  getDrawData  = mpi_fdtd3D_upml_getEx;
 }
 
 static void setSolver(enum SOLVER solver)

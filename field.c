@@ -359,8 +359,8 @@ void field_outputElliptic(const char *fileName, dcomplex* data)
   for(int ang=180; ang >=0; ang--)
   {
     double rad = ang*M_PI/180.0;
-    double x = 1.2*wInfo_s.Lambda_s*cos(rad)+fInfo_s.N_PX/2.0;
-    double y = 1.2*wInfo_s.Lambda_s*sin(rad)+fInfo_s.N_PY/2.0;
+    double x = 1.5*wInfo_s.Lambda_s*cos(rad)+fInfo_s.N_PX/2.0;
+    double y = 1.5*wInfo_s.Lambda_s*sin(rad)+fInfo_s.N_PY/2.0;
     int index = field_index((int)x, (int)y, z);
     dcomplex phi = cbilinear(data, x, y, index, fInfo_s.N_PYZ, fInfo_s.N_PZ);
     fprintf(fp, "%d, %.18lf \n", 180-ang, cnorm(phi));
@@ -376,7 +376,7 @@ void field_outputAllDataComplex(const char *fileName,dcomplex* data)
   FieldInfo_S fInfo_s = field_getFieldInfo_S();
   for(int i=0; i<fInfo_s.N_CELL; i++)
   {
-    fprintf(fp,  "%.18lf %.18lf \n", creal(data[i]), cimag(data[i]));
+    fprintf(fp,  "%.18lf, %.18lf \n", creal(data[i]), cimag(data[i]));
   }
   fclose(fp);
 }

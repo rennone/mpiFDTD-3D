@@ -31,14 +31,6 @@ static MPI_Datatype DCOMPLEX_XZ; //XZ平面
 //Hy(i    ,j+0.5,k    ,t+0.5) -> Hy[i,j,k]
 //Hz(i    ,j    ,k+0.5,t+0.5) -> Hz[i,j,k]
 
-//Hx(i,j+0.5,k)         -> Hx[i,j,k]
-//Hy(i+0.5,j,k)         -> Hy[i,j,k]
-//Hz(i+0.5,j+0.5,k+0.5) -> Hz[i,j,k]
-
-//Ex(i+0.5,j,k+0.5)     -> Ex[i,j,k]
-//Ey(i,j+0.5,k+0.5)     -> Ey[i,j,k]
-//Ez(i,j,k)             -> Ez[i,j,k]
-
 static dcomplex *Ex = NULL;
 static dcomplex *Jx = NULL;
 static dcomplex *Dx = NULL;
@@ -109,7 +101,7 @@ dcomplex* mpi_fdtd3D_upml_getHx(void){  return Hx;}
 dcomplex* mpi_fdtd3D_upml_getHy(void){  return Hy;}
 dcomplex* mpi_fdtd3D_upml_getHz(void){  return Hz;}
 
-double*   mpi_fdtd3D_upml_getEps(void){  return EPS_EY;}
+double*   mpi_fdtd3D_upml_getEps(void){  return EPS_EX;}
 
 void (* mpi_fdtd3D_upml_getUpdate(void))(void){
   return update;
@@ -146,8 +138,8 @@ static void update(void)
   Connection_SendRecvH();
   calcJDE();
 
-  pointLightInCenter(Ey);
-//  scatteredWave(Ey, EPS_EY, 0.5, 0.5, 0.0);
+//  pointLightInCenter(Ey);
+  scatteredWave(Ex, EPS_EX, 0.0, 0.5, 0.5);
 
   Connection_SendRecvE();  
 }
@@ -181,17 +173,17 @@ static void scatteredWave(dcomplex *p, double *eps, double gapX, double gapY, do
   
   SubFieldInfo_S subInfo_s = field_getSubFieldInfo_S();
   int nextX   = 2*subInfo_s.SUB_N_PZ;
-  int endX    = subInfo_s.SUB_N_X;
-  int endY    = subInfo_s.SUB_N_Y;
-  int endZ    = subInfo_s.SUB_N_Z;
+  int endX    = subInfo_s.SUB_N_PX-1;
+  int endY    = subInfo_s.SUB_N_PY-1;
+  int endZ    = subInfo_s.SUB_N_PZ-1;
   int offsetX = subInfo_s.OFFSET_X + gapX;
   int offsetY = subInfo_s.OFFSET_Y + gapY;
   int offsetZ = subInfo_s.OFFSET_Z + gapZ;
   int w = field_subIndex(1,1,1);
   double ray_coef_EPS_0 = ray_coef*EPSILON_0_S;
-  for(int i=0; i<endX; i++, w+=nextX) 
-    for(int j=0; j<endY; j++, w+=2) 
-      for(int k=0; k<endZ; k++, w+=1)
+  for(int i=1; i<endX; i++, w+=nextX) 
+    for(int j=1; j<endY; j++, w+=2) 
+      for(int k=1; k<endZ; k++, w+=1)
       {
         // 空気中は追加の散乱波は0なので無視する.
         if(eps[w] == EPSILON_0_S)
@@ -614,12 +606,11 @@ static dcomplex* unifyToRank0(dcomplex *phi)
 //---------------------メモリの解放--------------------//
 static void miePrint()
 {
-  const char *file_name = "Ey.txt";
-  dcomplex *entire = unifyToRank0(Ey);
-  if( entire != NULL){
-//    field_outputElliptic(file_name, entire);
-    field_outputAllDataComplex("Eyy.txt", entire);
-    free(entire);
+  dcomplex *entireEx = unifyToRank0(Ex);
+  if( entireEx != NULL){
+    field_outputElliptic("Ex.txt", entireEx);
+    field_outputAllDataComplex("Ex-data.txt", entireEx);
+    free(entireEx);
   }
   //勝手にfreeしないように吐き出しが終わるまでは,待つ.
   MPI_Barrier(MPI_COMM_WORLD);
