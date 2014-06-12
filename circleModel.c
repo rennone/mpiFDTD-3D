@@ -53,18 +53,19 @@ static double eps(double x, double y, double z, int col, int row, int dep)
   if(lenSqr <= (radius-1.0)*(radius-1.0))
     return epsilon;
 
-  //さらに32*32分割し媒質内と媒質外の数を求めepsilonを決定する
+  
+  //さらに分割した領域で媒質内と媒質外の数を求めepsilonを細かに決定する
+  double split = 10; //分割数
   double sum=0;
-
 //  NOT_DONE("i dont need its loop if flag(col row dep) is false\n");
-  for(int i=-16+0.5; i<16; i+=1)
-    for(int j=-16+0.5; j<16; j+=1)
-      for(int k=-16+0.5; k<16; k+=1)
+  for(int i=-split/2+0.5; i<split/2; i+=1)
+    for(int j=-split/2+0.5; j<split/2; j+=1)
+      for(int k=-split/2+0.5; k<split/2; k+=1)
       {
-        if(pow(dx+col*i/32.0, 2.0) + pow(dy+row*j/32.0, 2.0) + pow(dz+dep*k/32.0, 2.0) <= radius*radius)
+        if(pow(dx+col*i/split, 2.0) + pow(dy+row*j/split, 2.0) + pow(dz+dep*k/split, 2.0) <= radius*radius)
 	sum+=1;
       }
   
-  sum /= 32.0*32.0*32.0;
+  sum /= split*split*split;
   return epsilon*sum + EPSILON_0_S*(1-sum);
 }

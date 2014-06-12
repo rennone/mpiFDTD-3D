@@ -139,7 +139,7 @@ static void update(void)
   calcJDE();
 
 //  pointLightInCenter(Ey);
-  scatteredWave(Ex, EPS_EX, 0.0, 0.5, 0.5);
+  scatteredWave(Ez, EPS_EZ, 0.5, 0.5, 0.0);
 
   Connection_SendRecvE();  
 }
@@ -604,14 +604,33 @@ static dcomplex* unifyToRank0(dcomplex *phi)
 }
 
 //---------------------メモリの解放--------------------//
+
 static void miePrint()
-{
+{  
   dcomplex *entireEx = unifyToRank0(Ex);
-  if( entireEx != NULL){
+  dcomplex *entireEy = unifyToRank0(Ey);
+  dcomplex *entireEz = unifyToRank0(Ez);
+  dcomplex *entireHx = unifyToRank0(Hx);
+  dcomplex *entireHy = unifyToRank0(Hy);
+  dcomplex *entireHz = unifyToRank0(Hz);
+
+  SubFieldInfo_S subInfo_s = field_getSubFieldInfo_S();
+  if(subInfo_s.Rank == 0)
+  {
     field_outputElliptic("Ex.txt", entireEx);
-    field_outputAllDataComplex("Ex-data.txt", entireEx);
+    field_outputElliptic("Ey.txt", entireEy);
+    field_outputElliptic("Ez.txt", entireEz);
+    
+    ntff3D_Frequency(entireEx,entireEy,entireEz,entireHx,entireHy,entireHz);
     free(entireEx);
+    free(entireEy);
+    free(entireEz);
+    free(entireHx);
+    free(entireHy);
+    free(entireHz);
   }
+
+  
   //勝手にfreeしないように吐き出しが終わるまでは,待つ.
   MPI_Barrier(MPI_COMM_WORLD);
 }

@@ -1,6 +1,7 @@
 #include "ntff3D.h"
 #include <math.h>
 #include "field.h"
+#include "function.h"
 
 // 係数と最低限必要なインデックスをまとめて求める為のマクロ
 #define COEFF_AND_INDICES(i, j, k)                      \
@@ -62,14 +63,19 @@ void ntff3D_Frequency( dcomplex *Ex, dcomplex *Ey,dcomplex *Ez,
 
   double Z0 = field_getZ_0_S();
 
+  FILE *fpEth = openFile("Eth.txt");
+  FILE *fpEph = openFile("Eph.txt");
   //phi   : z軸回転
-  //theta : y(or x)軸回転 TODO
+  //theta : z軸との角度 TODO
   //theta=0 => +x(右), theta=90=>+z(前)
   //phi = 90 => +y(上)
-  double theta_rad = 0;
+  double theta_rad = 0; //xy平面上の遠方解を計算.
   for(int phi=0; phi<360; phi++) {
     double phi_rad = phi*M_PI/180.0;
-    double r1x = cos(theta_rad)*cos(phi_rad), r1y = sin(phi_rad), r1z = cos(phi_rad)*sin(theta_rad);
+    double r1x = cos(theta_rad)*cos(phi_rad);
+    double r1y = sin(phi_rad);
+    double r1z = cos(phi_rad)*sin(theta_rad);
+    
     dcomplex Nx = 0, Ny = 0, Nz = 0;
     dcomplex Lx = 0, Ly = 0, Lz = 0;
     
@@ -171,6 +177,9 @@ void ntff3D_Frequency( dcomplex *Ex, dcomplex *Ey,dcomplex *Ez,
 
     dcomplex Eth = Coeffician*(-Z0*Nth - Lph);
     dcomplex Eph = Coeffician*(-Z0*Nph + Lth);
+
+    fprintf(fpEth, "%.18lf %.18lf\n", creal(Eth), cimag(Eth));
+    fprintf(fpEph, "%.18lf %.18lf\n", creal(Eph), cimag(Eph));
   }
 }
 
@@ -180,6 +189,37 @@ void ntff3D_Frequency( dcomplex *Ex, dcomplex *Ey,dcomplex *Ez,
   double r2x = i+0.5-cx, r2y = j+0.5-cy, r2z = k+0.5-cz;                \
   double dot_per_c = r1x_per_c*r2x + r1y_per_c*r2y + r1z_per_c*r2z;     \
   double timeShift = -dot_per_c + nInfo.RFperC;                         \
+
+//必ず COEFF_AND_INDICESの後に記述する
+//前後の面に必要なE,Hを求める
+#define SUB_EH_IN_XY(w, ex, ey, hx, hy)                                      \
+  int w_rt = field_subRight(w);                                            \
+  int w_tp = field_subTop(w);                                              \
+  int w_ft = field_subFront(w);                                            \
+  dcomplex ex = -0.5*( Ex[w] + Ex[w_rt] );                              \
+  dcomplex ey =  0.5*( Ey[w] + Ey[w_tp] );                              \
+  dcomplex hx = -0.25*( Hx[w] + Hx[w_ft] + Hx[w_tp] + Hx[field_front(w_tp)]); \
+  dcomplex hy =  0.25*( Hy[w] + Hy[w_rt] + Hy[w_ft] + Hy[field_front(w_rt)]);
+
+//上下の面に必要なE,Hを求める
+#define SUB_EH_IN_XZ(w, ex, ez, hx, hz)                                      \
+  int w_rt = field_subRight(w);                                            \
+  int w_tp = field_subTop(w);                                              \
+  int w_ft = field_subFront(w);                                            \
+  dcomplex ex =  0.5*( Ex[w] + Ex[w_rt] );                              \
+  dcomplex ez = -0.5*( Ez[w] + Ez[w_ft] );                              \
+  dcomplex hx = -0.25*( Hx[w] + Hx[w_ft] + Hx[w_tp] + Hx[field_front(w_tp)]); \
+  dcomplex hz =  0.25*( Hz[w] + Hz[w_rt] + Hz[w_tp] + Hz[field_top(w_rt)]);
+
+//左右の面に必要なE,Hを求める
+#define SUB_EH_IN_YZ(w, ey,ez,hy,hz)            \
+  int w_rt = field_subRight(w);               \
+  int w_tp = field_subTop(w);                 \
+  int w_ft = field_subFront(w);               \
+  dcomplex ey =  0.5*( Ey[w] + Ey[w_tp] ); \
+  dcomplex ez = -0.5*( Ez[w] + Ez[w_ft] ); \
+  dcomplex hy =  0.25*( Hy[w] + Hy[w_rt] + Hy[w_ft] + Hy[field_front(w_rt)]); \
+  dcomplex hz = -0.25*( Hz[w] + Hz[w_rt] + Hz[w_tp] + Hz[field_top(w_rt)]);
 
 // eとU[stp] もしくは hとW[stp]を渡す
 //UW_ang = Ux[stp],Uy[stp],Wz[stp] の事. array[360][num]を一次元配列で表しており, その角度における配列を引数にとる
@@ -217,22 +257,52 @@ void ntff3D_SubTimeCalc(dcomplex *Ex,dcomplex *Ey,dcomplex *Ez,
   int ft = nInfo.front;   //全面
   int bk = nInfo.back;    //背面
 
-  int subIndex_tp = tp - subInfo_s.OFFSET_Y;
-  int subIndex_bm = bm - subInfo_s.OFFSET_Y;
-  int subIndex_rt = rt - subInfo_s.OFFSET_X;
-  int subIndex_lt = lt - subInfo_s.OFFSET_X;
-  int subIndex_ft = ft - subInfo_s.OFFSET_Z;
-  int subIndex_bk = bk - subInfo_s.OFFSET_Z;
-  /*
-  int sub_tp = min(subInfo_s.SUB_N_PY, max( 0, tp - subInfo_s.OFFSET_Y) );
-  int sub_bm = min(subInfo_s.SUB_N_PY, max( 0, bm - subInfo_s.OFFSET_Y) );
-  int sub_rt = min(subInfo_s.SUB_N_PX, max( 0, rt - subInfo_s.OFFSET_X) );
-  int sub_lt = min(subInfo_s.SUB_N_PX, max( 0, lt - subInfo_s.OFFSET_X) );
-  int sub_ft = min(subInfo_s.SUB_N_PZ, max( 0, ft - subInfo_s.OFFSET_Z) );
-  int sub_bk = min(subInfo_s.SUB_N_PZ, max( 0, bk - subInfo_s.OFFSET_Z) );
-  */
+  int sub_tp = tp - subInfo_s.OFFSET_Y;
+  int sub_bm = bm - subInfo_s.OFFSET_Y;
+  int sub_rt = rt - subInfo_s.OFFSET_X;
+  int sub_lt = lt - subInfo_s.OFFSET_X;
+  int sub_ft = ft - subInfo_s.OFFSET_Z;
+  int sub_bk = bk - subInfo_s.OFFSET_Z;
+
+  //以下どれかでも満たせば積分路上に無い
+  bool outX = sub_rt <= 0 || sub_lt >= subInfo_s.SUB_N_PX-1; //rtより右, もしくはltより左の小領域
+  bool outY = sub_tp <= 0 || sub_bm >= subInfo_s.SUB_N_PY-1; //tpより上, もしくはbmより下の小領域
+  bool outZ = sub_ft <= 0 || sub_bk >= subInfo_s.SUB_N_PZ-1; //ftより前, もしくはbkより後ろの小領域
+  
   // 小領域は上の積分面上にある
-//  bool IN_TP =  (1 <= sub_tp != && sub_tp <= subInfo_s.N_PX-2) && sub_rt != sub_lt && sub_ft != sub_bk; // 
+  bool IN_TP = (0 < sub_tp && sub_tp < subInfo_s.SUB_N_PY-1) && !outX && !outZ;
+  bool IN_BM = (0 < sub_bm && sub_bm < subInfo_s.SUB_N_PY-1) && !outX && !outZ;
+  bool IN_RT = (0 < sub_rt && sub_rt < subInfo_s.SUB_N_PX-1) && !outY && !outZ;
+  bool IN_LT = (0 < sub_lt && sub_lt < subInfo_s.SUB_N_PX-1) && !outY && !outZ;
+  bool IN_FT = (0 < sub_ft && sub_ft < subInfo_s.SUB_N_PZ-1) && !outX && !outZ;
+  bool IN_BK = (0 < sub_bk && sub_bk < subInfo_s.SUB_N_PZ-1) && !outX && !outZ;
+
+  int sub_ylt=0, sub_yrt=0, sub_yft=0, sub_ybk=0;
+  if(IN_TP || IN_BM)
+  {
+    sub_yrt = min(subInfo_s.SUB_N_PX-1, max( 1, sub_rt) );
+    sub_ylt = min(subInfo_s.SUB_N_PX-1, max( 1, sub_lt) );
+    sub_yft = min(subInfo_s.SUB_N_PZ-1, max( 1, sub_ft) );
+    sub_ybk = min(subInfo_s.SUB_N_PZ-1, max( 1, sub_bk) );
+  }
+
+  int sub_xtp=0, sub_xbm=0, sub_xft=0, sub_xbk=0;
+  if(IN_RT || IN_LT)
+  {
+    sub_xbm = min(subInfo_s.SUB_N_PY-1, max( 1, sub_bm) );
+    sub_xtp = min(subInfo_s.SUB_N_PY-1, max( 1, sub_tp) );
+    sub_xft = min(subInfo_s.SUB_N_PZ-1, max( 1, sub_ft) );
+    sub_xbk = min(subInfo_s.SUB_N_PZ-1, max( 1, sub_bk) );
+  }
+
+  int sub_ztp=0, sub_zbm=0, sub_zlt=0, sub_zrt=0;
+  if(IN_RT || IN_LT)
+  {
+    sub_zbm = min(subInfo_s.SUB_N_PY-1, max( 1, sub_bm) );
+    sub_ztp = min(subInfo_s.SUB_N_PY-1, max( 1, sub_tp) );
+    sub_zrt = min(subInfo_s.SUB_N_PX-1, max( 1, sub_rt) );
+    sub_zlt = min(subInfo_s.SUB_N_PX-1, max( 1, sub_lt) );
+  }
   
   int index_ang = 0;  //角度angの0番目のインデックス
   const double theta_rad = 0;
@@ -255,95 +325,110 @@ void ntff3D_SubTimeCalc(dcomplex *Ex,dcomplex *Ey,dcomplex *Ez,
     //前の面 n=(0, 0, 1)
     // (N =) J = n × H = (-hy, hx, 0)
     // (L =) M = E × n = ( ey,-ex,  0)
-    for ( int i=lt; i<rt; i++ )
-      for( int j=bm; j<tp; j++) {
-        SUB_TIME_SHIFT_AND_INDICES(i , j, ft);
-        int w = field_subIndex(i-subInfo_s.OFFSET_X, j-subInfo_s.OFFSET_Y, ft-subInfo_s.OFFSET_Z);
-        EH_IN_XY(w, ex, ey, hx, hy);
+    if( IN_FT )
+    {
+      for ( int i=sub_zlt; i<sub_zrt; i++ )
+        for( int j=sub_zbm; j<sub_ztp; j++) {
+          SUB_TIME_SHIFT_AND_INDICES(i+subInfo_s.OFFSET_X , j+subInfo_s.OFFSET_Y, ft);
+          int w = field_subIndex(i, j, sub_ft);
+          SUB_EH_IN_XY(w, ex, ey, hx, hy);
       
-        calc(timeE+timeShift,-ex, Uy_ang);
-        calc(timeE+timeShift, ey, Ux_ang);
-        calc(timeH+timeShift, hx, Wy_ang);
-        calc(timeH+timeShift,-hy, Wx_ang);
-      }
-
+          calc(timeE+timeShift,-ex, Uy_ang);
+          calc(timeE+timeShift, ey, Ux_ang);
+          calc(timeH+timeShift, hx, Wy_ang);
+          calc(timeH+timeShift,-hy, Wx_ang);
+        }
+    }
     //前の面 n=(0, 0, 1)
     // (W =) J = n × H = (-hx, hy, 0)
     // (U =) M = E × n = ( ey,-ex,  0)
-    for ( int i=lt; i<rt; i++ )
-      for( int j=bm; j<tp; j++) {        
-        SUB_TIME_SHIFT_AND_INDICES(i, j, bk);
-        int w = field_subIndex(i-subInfo_s.OFFSET_X, j-subInfo_s.OFFSET_Y, bk-subInfo_s.OFFSET_Z);
+    if( IN_BK )
+    {
+      for ( int i=sub_zlt; i<sub_zrt; i++ )
+        for( int j=sub_zbm; j<sub_ztp; j++) {        
+          SUB_TIME_SHIFT_AND_INDICES(i+subInfo_s.OFFSET_X, j+subInfo_s.OFFSET_Y, bk);
+          int w = field_subIndex(i, j, sub_bk);
         
-        EH_IN_XY(w, ex, ey, hx, hy);
-        calc(timeE+timeShift, ex, Uy_ang);
-        calc(timeE+timeShift,-ey, Ux_ang);
-        calc(timeH+timeShift,-hx, Wy_ang);
-        calc(timeH+timeShift, hy, Wx_ang);
-      }
+          SUB_EH_IN_XY(w, ex, ey, hx, hy);
+          calc(timeE+timeShift, ex, Uy_ang);
+          calc(timeE+timeShift,-ey, Ux_ang);
+          calc(timeH+timeShift,-hx, Wy_ang);
+          calc(timeH+timeShift, hy, Wx_ang);
+        }
+    }
 
     
     //右の面 n=(1,0,0)
     // (W =) J = n × H = (  0, -hz, hy)
     // (U =) M = E × n = (  0,  ez,-ey)
-    for(int j=bm; j<tp; j++)
-      for(int k=bk; k<ft; k++){
-        SUB_TIME_SHIFT_AND_INDICES(rt, j, k);
-        int w = field_subIndex(rt-subInfo_s.OFFSET_X, j-subInfo_s.OFFSET_Y, k-subInfo_s.OFFSET_Z);
+    if( IN_RT )
+    {
+      for(int j=sub_xbm; j<sub_xtp; j++)
+        for(int k=sub_xbk; k<sub_xft; k++){
+          SUB_TIME_SHIFT_AND_INDICES(sub_rt, j+subInfo_s.OFFSET_Y, k+subInfo_s.OFFSET_Z);
+          int w = field_subIndex(sub_rt, j, k);
         
-        EH_IN_YZ(w, ey,ez,hy,hz);        
-        calc(timeE+timeShift, ez, Uy_ang);
-        calc(timeE+timeShift,-ey, Uz_ang);
-        calc(timeH+timeShift,-hz, Wy_ang);
-        calc(timeH+timeShift, hy, Wz_ang);
-      }
-
+          SUB_EH_IN_YZ(w, ey,ez,hy,hz);        
+          calc(timeE+timeShift, ez, Uy_ang);
+          calc(timeE+timeShift,-ey, Uz_ang);
+          calc(timeH+timeShift,-hz, Wy_ang);
+          calc(timeH+timeShift, hy, Wz_ang);
+        }
+    }
     //左の面 n=(-1, 0, 0)
     // (W =) J = n × H = (  0, hz,-hy)
     // (U =) M = E × n = (  0,-ey, ez)
-    for(int j=bm; j<tp; j++)
-      for(int k=bk; k<ft; k++){
-        SUB_TIME_SHIFT_AND_INDICES(lt, j, k);
-        int w = field_subIndex(lt-subInfo_s.OFFSET_X, j-subInfo_s.OFFSET_Y, k-subInfo_s.OFFSET_Z);
+    if( IN_LT )
+    {
+      for(int j=sub_xbm; j<sub_xtp; j++)
+        for(int k=sub_xbk; k<sub_xft; k++){
+          SUB_TIME_SHIFT_AND_INDICES(sub_lt, j+subInfo_s.OFFSET_Y, k+subInfo_s.OFFSET_Z);
+          int w = field_subIndex(sub_lt, j, k);
         
-        EH_IN_YZ(w, ey,ez, hy,hz);
-        calc(timeE+timeShift,-ez, Uy_ang);
-        calc(timeE+timeShift, ey, Uz_ang);
-        calc(timeH+timeShift,-hz, Wy_ang);
-        calc(timeH+timeShift, hy, Wz_ang);
-      }
-
+          SUB_EH_IN_YZ(w, ey,ez, hy,hz);
+          calc(timeE+timeShift,-ez, Uy_ang);
+          calc(timeE+timeShift, ey, Uz_ang);
+          calc(timeH+timeShift,-hz, Wy_ang);
+          calc(timeH+timeShift, hy, Wz_ang);
+        }
+    }
     //上の面 n=(0,1,0)
     // (W =) J = n × H = ( hz, 0, -hx)
     // (U =) M = E × n = (-ez, 0,  ex)
-    for(int i=lt; i<rt; i++)
-      for (int k=bk; k<ft; k++ )
-      {
-        SUB_TIME_SHIFT_AND_INDICES(i, tp, k);
-        int w = field_subIndex(i-subInfo_s.OFFSET_X, tp-subInfo_s.OFFSET_Y, k-subInfo_s.OFFSET_Z);
+    if( IN_TP )
+    {
+      for(int i=sub_ylt; i<sub_yrt; i++)
+        for (int k=sub_ybk; k<sub_yft; k++ )
+        {
+          SUB_TIME_SHIFT_AND_INDICES(i+subInfo_s.OFFSET_X, tp, k+subInfo_s.OFFSET_Z);
+          int w = field_subIndex(i, sub_tp, k);
         
-        EH_IN_XZ(w, ex, ez, hx, hz);
-        calc(timeE+timeShift,-ez, Ux_ang);
-        calc(timeE+timeShift, ex, Uz_ang);
-        calc(timeH+timeShift, hz, Wx_ang);
-        calc(timeH+timeShift,-hx, Wz_ang);
-      }
-
+          SUB_EH_IN_XZ(w, ex, ez, hx, hz);
+          calc(timeE+timeShift,-ez, Ux_ang);
+          calc(timeE+timeShift, ex, Uz_ang);
+          calc(timeH+timeShift, hz, Wx_ang);
+          calc(timeH+timeShift,-hx, Wz_ang);
+        }
+    }
     //下の面 n=(0,-1,0)
     // (W =) J = n × H = (-hz, 0, hx)
     // (U =) M = E × n = ( ez, 0,-ex)
-    for(int i=lt; i<rt; i++)
-      for (int k=bk; k<ft; k++ )
-      {
-        SUB_TIME_SHIFT_AND_INDICES(i, bk, k);
-        int w = field_subIndex(i-subInfo_s.OFFSET_X, bm-subInfo_s.OFFSET_Y, k-subInfo_s.OFFSET_Z);
+    if( IN_BM )
+    {
+      for(int i=sub_ylt; i<sub_yrt; i++)
+        for (int k=sub_ybk; k<sub_yft; k++ )
+        {
+          SUB_TIME_SHIFT_AND_INDICES(i+subInfo_s.OFFSET_X, bk, k+subInfo_s.OFFSET_Z);
+          int w = field_subIndex(i, sub_bm, k);
         
-        EH_IN_XZ(w, ex, ez, hx, hz);
-        calc(timeE+timeShift, ez, Ux_ang);
-        calc(timeE+timeShift,-ex, Uz_ang);
-        calc(timeH+timeShift,-hz, Wx_ang);
-        calc(timeH+timeShift, hx, Wz_ang);
-      }
+          EH_IN_XZ(w, ex, ez, hx, hz);
+          calc(timeE+timeShift, ez, Ux_ang);
+          calc(timeE+timeShift,-ex, Uz_ang);
+          calc(timeH+timeShift,-hz, Wx_ang);
+          calc(timeH+timeShift, hx, Wz_ang);
+        }
+    }
+    
   }
 }
 

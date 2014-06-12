@@ -37,14 +37,14 @@ int numProc;
 int main( int argc, char *argv[] )
 {
   FieldInfo fInfo;
-  fInfo.width_nm  = 640;
-  fInfo.height_nm = 640;
-  fInfo.depth_nm  = 640;
+  fInfo.width_nm  = 1280;
+  fInfo.height_nm = 1280;
+  fInfo.depth_nm  = 1280;
   fInfo.h_u_nm    = 10;
   fInfo.pml       = 10;
-  fInfo.lambda_nm = 80;
+  fInfo.lambda_nm = 300;
   fInfo.stepNum   = 1200;
-  fInfo.theta_deg = 0;
+  fInfo.theta_deg = 90;
   fInfo.phi_deg   = 0;
   enum MODEL modelType   = MIE_SPHERE;//NO_MODEL;
   enum SOLVER solberType = MPI_FDTD_3D;

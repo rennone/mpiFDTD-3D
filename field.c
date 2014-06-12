@@ -356,14 +356,15 @@ void field_outputElliptic(const char *fileName, dcomplex* data)
   WaveInfo_S wInfo_s = field_getWaveInfo_S();
   
   int z = fInfo_s.N_PZ/2;
-  for(int ang=180; ang >=0; ang--)
+  double ToRad = M_PI/180.0;
+  for(int ang=360; ang; ang--)
   {
-    double rad = ang*M_PI/180.0;
+    double rad = ang*ToRad;
     double x = 1.5*wInfo_s.Lambda_s*cos(rad)+fInfo_s.N_PX/2.0;
     double y = 1.5*wInfo_s.Lambda_s*sin(rad)+fInfo_s.N_PY/2.0;
     int index = field_index((int)x, (int)y, z);
     dcomplex phi = cbilinear(data, x, y, index, fInfo_s.N_PYZ, fInfo_s.N_PZ);
-    fprintf(fp, "%d, %.18lf \n", 180-ang, cnorm(phi));
+    fprintf(fp, "%d, %.18lf \n", 360-ang, cnorm(phi));
   }
   
   fclose(fp);
