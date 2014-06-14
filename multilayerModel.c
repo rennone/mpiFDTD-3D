@@ -1,4 +1,4 @@
-#include "multiLayerModel.h"
+#include "multilayerModel.h"
 #include "field.h"
 #include "function.h"
 #include <math.h>

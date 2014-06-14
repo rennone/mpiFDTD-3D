@@ -136,11 +136,12 @@ static void update(void)
 {
   calcMBH();
   Connection_SendRecvH();
+  MPI_Barrier(MPI_COMM_WORLD);
   calcJDE();
 
 //  pointLightInCenter(Ey);
   scatteredWave(Ez, EPS_EZ, 0.5, 0.5, 0.0);
-
+  MPI_Barrier(MPI_COMM_WORLD);
   Connection_SendRecvE();  
 }
 
