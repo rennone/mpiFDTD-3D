@@ -203,7 +203,7 @@ static void scatteredWave(dcomplex *p, double *eps, double gapX, double gapY, do
 static void Connection_SendRecvE(void)
 {
   // (Hの計算に)必要な物は
-  // Eのleft, bottm, backなので
+  // Ey,Ezのleft. Ex,Ezのbottm. Ex,Eyのbackなので
   // left, bottom, back を受け取り
   // right , top, frontを送る
   MPI_Status status;
@@ -238,7 +238,7 @@ static void Connection_SendRecvE(void)
 static void Connection_SendRecvH(void)
 {  
   // (Eの計算に)必要な物は
-  // Hのright, top, frontなので
+  // Hy,Hzのright. Hx,Hzのtop. Hx,Hyのfrontなので
   // right, top, front を受け取り
   // left, bottom, backを送る
   
@@ -270,8 +270,8 @@ static void Connection_SendRecvH(void)
 
   MPI_Sendrecv(&Hx[bkSend], 1, MPI_DCOMPLEX_XY_PLANE, subInfo_s.BkRank, 1,
                &Hx[ftRecv], 1, MPI_DCOMPLEX_XY_PLANE, subInfo_s.FtRank, 1, MPI_COMM_WORLD, &status);
-  MPI_Sendrecv(&Hz[bkSend], 1, MPI_DCOMPLEX_XY_PLANE, subInfo_s.BkRank, 1,
-               &Hz[ftRecv], 1, MPI_DCOMPLEX_XY_PLANE, subInfo_s.FtRank, 1, MPI_COMM_WORLD, &status);
+  MPI_Sendrecv(&Hy[bkSend], 1, MPI_DCOMPLEX_XY_PLANE, subInfo_s.BkRank, 1,
+               &Hy[ftRecv], 1, MPI_DCOMPLEX_XY_PLANE, subInfo_s.FtRank, 1, MPI_COMM_WORLD, &status);
 }
 
 //calculate J and D
