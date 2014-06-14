@@ -263,7 +263,7 @@ static void Connection_SendRecvH(void)
   MPI_Sendrecv(&Hz[bmSend], 1, MPI_DCOMPLEX_XZ_PLANE, subInfo_s.BmRank, 1,
                &Hz[tpRecv], 1, MPI_DCOMPLEX_XZ_PLANE, subInfo_s.TpRank, 1, MPI_COMM_WORLD, &status);
 
-  //前後のランクとの同期=>これは, 配列が2段階に隙間があるから.平面全部を同期しないと行けない
+  //前後のランクとの同期=>これは, 配列が2段階に隙間があるから.のりしろを含めた平面全部を同期しないと行けない
   int ftRecv = field_subIndex(0, 0, subInfo_s.SUB_N_PZ-1);//field_subIndex(1, 1, subInfo_s.SUB_N_PZ-1);
   int bkSend = field_subIndex(0, 0, 1);
 
@@ -551,13 +551,8 @@ static void cpy(dcomplex *entire, dcomplex *region, int dx, int dy, int dz)
 {
   //sub領域のregionをentireにコピー
   //SUB_N_PXとかは, 全プロセスで共通(なはず)なので, subInfo_sの値をそのまま使う
-  //オフセットはプロセスごとに違うので外部から与える.
-  
+  //オフセットはプロセスごとに違うので外部から与える.  
   SubFieldInfo_S subInfo_s = field_getSubFieldInfo_S();  
-/*  for(int i=1, x=dx; i<subInfo_s.SUB_N_PX-1; i++, x++)
-  {
-    for(int j=1, y=dy; j<subInfo_s.SUB_N_PY-1; j++, y++)
-    for(int k=1, z=dz; k<subInfo_s.SUB_N_PZ-1; k++, z++)*/
   for(int i=1; i<subInfo_s.SUB_N_PX-1; i++)  
     for(int j=1; j<subInfo_s.SUB_N_PY-1; j++)
       for(int k=1; k<subInfo_s.SUB_N_PZ-1; k++)

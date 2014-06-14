@@ -46,7 +46,7 @@ int main( int argc, char *argv[] )
   fInfo.stepNum   = 1200;
   fInfo.theta_deg = 90;
   fInfo.phi_deg   = 0;
-  enum MODEL modelType   = MIE_SPHERE;//NO_MODEL;
+  enum MODEL modelType   = MIE_SPHERE;//NO_MODEL;//LAYER;
   enum SOLVER solberType = MPI_FDTD_3D;
   MPI_Init( 0, 0 );
   simulator_init(fInfo, modelType, solberType);

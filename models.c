@@ -2,6 +2,7 @@
 #include "models.h"
 #include "noModel.h"
 #include "circleModel.h"
+#include "multilayerModel.h"
 //#include "shelf.h"
 //#include "nonshelf.h"
 
@@ -20,6 +21,11 @@ static void circleModel(void)
   epsMethod = circleModel_EPS();
 }
 
+static void multilayerModel()
+{
+  epsMethod = multilayerModel_EPS();
+}
+
 void setModel(enum MODEL model)
 {
   switch(model){
@@ -32,6 +38,7 @@ void setModel(enum MODEL model)
   case SHELF :
   case NONSHELF:
   case LAYER:
+    multilayerModel();
     break;
   }
 }
