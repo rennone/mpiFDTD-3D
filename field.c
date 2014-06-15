@@ -359,7 +359,7 @@ void field_outputElliptic(const char *fileName, dcomplex* data, int plane)
   WaveInfo_S wInfo_s = field_getWaveInfo_S();
 
 
-  double r = 1.2*wInfo_s.Lambda_s;
+  double r = 1.2*field_toCellUnit(100);
   double ToRad = M_PI/180.0;
 
   int ox = fInfo_s.N_PX/2;

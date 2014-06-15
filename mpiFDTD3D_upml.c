@@ -614,13 +614,13 @@ static void miePrint()
   SubFieldInfo_S subInfo_s = field_getSubFieldInfo_S();
   if(subInfo_s.Rank == 0)
   {
-    field_outputElliptic("Ex-xy.txt", entireEx, 0);
-    field_outputElliptic("Ex-zy.txt", entireEx, 1);
-    field_outputElliptic("Ex-xz.txt", entireEx, 2);
+    field_outputElliptic("Ex_xy.txt", entireEx, 0);
+    field_outputElliptic("Ex_zy.txt", entireEx, 1);
+    field_outputElliptic("Ex_xz.txt", entireEx, 2);
     
-    field_outputElliptic("Ey-xy.txt", entireEy, 0);
-    field_outputElliptic("Ey-zy.txt", entireEy, 1);
-    field_outputElliptic("Ey-xz.txt", entireEy, 2);
+    field_outputElliptic("Ey_xy.txt", entireEy, 0);
+    field_outputElliptic("Ey_zy.txt", entireEy, 1);
+    field_outputElliptic("Ey_xz.txt", entireEy, 2);
     
     ntff3D_Frequency(entireEx,entireEy,entireEz,entireHx,entireHy,entireHz);
     free(entireEx);
