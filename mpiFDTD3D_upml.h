@@ -14,5 +14,5 @@ extern dcomplex* mpi_fdtd3D_upml_getHx(void);
 extern dcomplex* mpi_fdtd3D_upml_getHy(void);
 extern dcomplex* mpi_fdtd3D_upml_getHz(void);
 extern double*   mpi_fdtd3D_upml_getEps(void);
-
+extern dcomplex* mpi_fdtd3D_upml_getData(void);
 #endif

@@ -101,7 +101,8 @@ dcomplex* mpi_fdtd3D_upml_getHx(void){  return Hx;}
 dcomplex* mpi_fdtd3D_upml_getHy(void){  return Hy;}
 dcomplex* mpi_fdtd3D_upml_getHz(void){  return Hz;}
 
-double*   mpi_fdtd3D_upml_getEps(void){  return EPS_EX;}
+double*   mpi_fdtd3D_upml_getEps(void){  return EPS_EY;}
+dcomplex*   mpi_fdtd3D_upml_getData(void){  return Ey;}
 
 void (* mpi_fdtd3D_upml_getUpdate(void))(void){
   return update;
@@ -136,13 +137,12 @@ static void update(void)
 {
   calcMBH();
   Connection_SendRecvH();
-  MPI_Barrier(MPI_COMM_WORLD);
+//  MPI_Barrier(MPI_COMM_WORLD);
   calcJDE();
-
-//  pointLightInCenter(Ey);
-  scatteredWave(Ez, EPS_EZ, 0.5, 0.5, 0.0);
-  MPI_Barrier(MPI_COMM_WORLD);
-  Connection_SendRecvE();  
+//  pointLightInCenter(Ex);
+  scatteredWave(Ey, EPS_EY, 0.5, 0.0, 0.5);
+//  MPI_Barrier(MPI_COMM_WORLD);
+  Connection_SendRecvE();
 }
 
 static void pointLightInCenter(dcomplex *p)
@@ -610,12 +610,17 @@ static void miePrint()
   dcomplex *entireHy = unifyToRank0(Hy);
   dcomplex *entireHz = unifyToRank0(Hz);
 
+  MPI_Barrier(MPI_COMM_WORLD);
   SubFieldInfo_S subInfo_s = field_getSubFieldInfo_S();
   if(subInfo_s.Rank == 0)
   {
-    field_outputElliptic("Ex.txt", entireEx);
-    field_outputElliptic("Ey.txt", entireEy);
-    field_outputElliptic("Ez.txt", entireEz);
+    field_outputElliptic("Ex-xy.txt", entireEx, 0);
+    field_outputElliptic("Ex-zy.txt", entireEx, 1);
+    field_outputElliptic("Ex-xz.txt", entireEx, 2);
+    
+    field_outputElliptic("Ey-xy.txt", entireEy, 0);
+    field_outputElliptic("Ey-zy.txt", entireEy, 1);
+    field_outputElliptic("Ey-xz.txt", entireEy, 2);
     
     ntff3D_Frequency(entireEx,entireEy,entireEz,entireHx,entireHy,entireHz);
     free(entireEx);

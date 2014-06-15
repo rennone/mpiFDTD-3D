@@ -23,7 +23,7 @@ typedef struct {
  GLfloat r,g,b;
 }colorf;
 
-#define TEX_SIZE 256
+#define TEX_SIZE 512
 #define TEX_NX 512
 #define TEX_NY 512
 
@@ -168,7 +168,7 @@ void drawer_paintImage(int left, int bottom, int right, int top, int width, int 
 static void paint(dcomplex *phis, double *eps, int startIndex, int lengthX, int lengthY, int offsetX, int offsetY, double u, int quadrant)
 {
   colorf c;
-  double amp = 10;
+  double amp = 1;
   int ox = (quadrant&1)*TEX_SIZE;       //原点
   int oy = ((quadrant>>1)&1)*TEX_SIZE;  //原点 
   double x, y;
@@ -244,7 +244,7 @@ void drawer_paintImage3(dcomplex *phis)
   }
 }
 
-void drawer_subFieldPaintImage3(dcomplex *phis, double *eps)
+void drawer_subFieldPaintImage3(dcomplex *phis, double *eps, enum DISPLAY_PLANE plane)
 {
   SubFieldInfo_S sInfo = field_getSubFieldInfo_S();
 
@@ -266,21 +266,24 @@ void drawer_subFieldPaintImage3(dcomplex *phis, double *eps)
   int fixedZ = fInfo.N_PZ/2 - sInfo.OFFSET_Z;
 
 //第3象限(左下)にXY平面
-  if(ZZ){
-  w = field_subIndex(1, 1, fixedZ);
-  paint(phis,eps, w, sInfo.SUB_N_X, sInfo.SUB_N_Y, sInfo.SUB_N_PYZ, sInfo.SUB_N_PZ ,u, 0);
+  if(ZZ && (plane == XY_PLANE || plane == ALL_PLANE))
+  {
+    w = field_subIndex(1, 1, fixedZ);
+    paint(phis,eps, w, sInfo.SUB_N_X, sInfo.SUB_N_Y, sInfo.SUB_N_PYZ, sInfo.SUB_N_PZ ,u, 0);
   }
   
   //第4象限(右下)にXZ平面
-  if(YY){
-  w = field_subIndex(1, fixedY, 1);
-  paint(phis, eps, w, sInfo.SUB_N_X, sInfo.SUB_N_Z, sInfo.SUB_N_PYZ, 1 ,u, 1);
+  if(YY && (plane == XZ_PLANE || plane == ALL_PLANE))
+  {
+    w = field_subIndex(1, fixedY, 1);  
+    paint(phis, eps, w, sInfo.SUB_N_X, sInfo.SUB_N_Z, sInfo.SUB_N_PYZ, 1 ,u, plane == XZ_PLANE ? 0 : 1);
   }
   
   //第2象限(左上)にZY平面
-  if(XX){
-  w = field_subIndex(fixedX, 1, 1);
-  paint(phis,eps, w, sInfo.SUB_N_Z, sInfo.SUB_N_Y, 1, sInfo.SUB_N_PZ, u, 2);
+  if(XX && (plane == ZY_PLANE || plane == ALL_PLANE))
+  {
+    w = field_subIndex(fixedX, 1, 1);
+    paint(phis,eps, w, sInfo.SUB_N_Z, sInfo.SUB_N_Y, 1, sInfo.SUB_N_PZ, u, plane == ZY_PLANE ? 0 : 2);
   }
 }
 

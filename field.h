@@ -160,7 +160,8 @@ extern FieldInfo_S field_getFieldInfo_S(void);
 extern FieldInfo field_getFieldInfo(void);
 
 //output method
-extern void field_outputElliptic(const char *fileName,double complex* data); //
+//plane => 0 : XY平面. 1 : YZ平面. 2 : XZ平面
+extern void field_outputElliptic(const char *fileName,double complex* data, int plane);
 extern void field_outputAllDataComplex(const char *fileName,double complex* data); //
 extern void field_outputAllDataDouble(const char *fileName,double* data); //
 

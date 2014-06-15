@@ -347,23 +347,45 @@ static void mpiSplit(void)
 
 }
 
-void field_outputElliptic(const char *fileName, dcomplex* data)
+//plane => 0 : XY平面(z=dep/2)
+//1 : YZ平面(x=wid/2)
+//2 : XZ平面(y=hei/2)
+void field_outputElliptic(const char *fileName, dcomplex* data, int plane)
 {
   printf("output start\n");
   //file open
   FILE *fp = openFile(fileName);
   FieldInfo_S fInfo_s = field_getFieldInfo_S();
   WaveInfo_S wInfo_s = field_getWaveInfo_S();
-  
-  int z = fInfo_s.N_PZ/2;
+
+
+  double r = 1.5*wInfo_s.Lambda_s;
   double ToRad = M_PI/180.0;
+
+  int ox = fInfo_s.N_PX/2;
+  int oy = fInfo_s.N_PY/2;
+  int oz = fInfo_s.N_PZ/2;
   for(int ang=360; ang; ang--)
   {
     double rad = ang*ToRad;
-    double x = 1.5*wInfo_s.Lambda_s*cos(rad)+fInfo_s.N_PX/2.0;
-    double y = 1.5*wInfo_s.Lambda_s*sin(rad)+fInfo_s.N_PY/2.0;
-    int index = field_index((int)x, (int)y, z);
-    dcomplex phi = cbilinear(data, x, y, index, fInfo_s.N_PYZ, fInfo_s.N_PZ);
+    dcomplex phi;
+    if(plane == 0)
+    {
+      double x =  ox + r*cos(rad);
+      double y =  oy + r*sin(rad);
+      int index = field_index((int)x, (int)y, oz);
+      phi = cbilinear(data, x, y, index, fInfo_s.N_PYZ, fInfo_s.N_PZ);
+    } else if( plane == 1) {
+      double z =  oz + r*cos(rad);
+      double y =  oy + r*sin(rad);
+      int index = field_index( ox, (int)y, (int)z);
+      phi = cbilinear(data, z, y, index, 1, fInfo_s.N_PZ);
+    }else {
+      double x =  ox + r*cos(rad);
+      double z =  oz + r*sin(rad);
+      int index = field_index( (int)x, oy, (int)z);
+      phi = cbilinear(data, x, z, index, fInfo_s.N_PYZ, 1);
+    }
     fprintf(fp, "%d, %.18lf \n", 360-ang, cnorm(phi));
   }
   

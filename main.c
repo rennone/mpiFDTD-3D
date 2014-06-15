@@ -43,7 +43,7 @@ int main( int argc, char *argv[] )
   fInfo.h_u_nm    = 10;
   fInfo.pml       = 10;
   fInfo.lambda_nm = 300;
-  fInfo.stepNum   = 1200;
+  fInfo.stepNum   = 1500;
   fInfo.theta_deg = 90;
   fInfo.phi_deg   = 0;
   enum MODEL modelType   = MIE_SPHERE;//NO_MODEL;//LAYER;
@@ -66,7 +66,7 @@ int main( int argc, char *argv[] )
 SubFieldInfo_S subInfo = field_getSubFieldInfo_S(); 
 int windowX = 1.0*subInfo.OFFSET_X / subInfo.SUB_N_X * WINDOW_WIDTH;
 int windowY = 800-1.0*subInfo.OFFSET_Y/subInfo.SUB_N_Y * WINDOW_HEIGHT - WINDOW_HEIGHT;
-enum COLOR_MODE colorMode = CREAL;
+enum COLOR_MODE colorMode = CABS;
 
     glutInit(&argc, argv);
     glutInitWindowPosition(windowX,windowY);
@@ -100,7 +100,7 @@ static void drawSubField()
   FieldInfo_S fInfo = field_getFieldInfo_S();
   SubFieldInfo_S sInfo = field_getSubFieldInfo_S();
 
-  drawer_subFieldPaintImage3(data3D, eps3D);
+  drawer_subFieldPaintImage3(data3D, eps3D, ZY_PLANE);
 }
 
 void display(void)
