@@ -37,12 +37,12 @@ int numProc;
 int main( int argc, char *argv[] )
 {
   FieldInfo fInfo;
-  fInfo.width_nm  = 1280;
-  fInfo.height_nm = 1280;
-  fInfo.depth_nm  = 1280;
-  fInfo.h_u_nm    = 10;
+  fInfo.width_nm  = 500;
+  fInfo.height_nm = 500;
+  fInfo.depth_nm  = 500;
+  fInfo.h_u_nm    = 5;
   fInfo.pml       = 10;
-  fInfo.lambda_nm = 300;
+  fInfo.lambda_nm = 500;
   fInfo.stepNum   = 1500;
   fInfo.theta_deg = 90;
   fInfo.phi_deg   = 0;
@@ -63,9 +63,9 @@ int main( int argc, char *argv[] )
 #endif
 
 #ifdef USE_OPENGL
-SubFieldInfo_S subInfo = field_getSubFieldInfo_S(); 
-int windowX = 1.0*subInfo.OFFSET_X / subInfo.SUB_N_X * WINDOW_WIDTH;
-int windowY = 800-1.0*subInfo.OFFSET_Y/subInfo.SUB_N_Y * WINDOW_HEIGHT - WINDOW_HEIGHT;
+    SubFieldInfo_S subInfo = field_getSubFieldInfo_S(); 
+    int windowX = 1.0*subInfo.OFFSET_X / subInfo.SUB_N_X * WINDOW_WIDTH;
+    int windowY = 800-1.0*subInfo.OFFSET_Y/subInfo.SUB_N_Y * WINDOW_HEIGHT - WINDOW_HEIGHT;
 enum COLOR_MODE colorMode = CABS;
 
     glutInit(&argc, argv);

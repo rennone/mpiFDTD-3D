@@ -20,7 +20,7 @@ double (*circleModel_EPS())(double, double, double, int , int, int)
   posz = fInfo_s.N_PZ/2;
 
   WaveInfo_S wInfo_s = field_getWaveInfo_S();
-  radius = wInfo_s.Lambda_s;
+  radius = field_toCellUnit(100);//wInfo_s.Lambda_s;
 
   double n = 1.6;
   epsilon = n*n*EPSILON_0_S;
