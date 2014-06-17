@@ -51,6 +51,7 @@ typedef struct FieldInfo_S
 //MPI分割後の小領域のパラメータ
 typedef struct SubFieldInfo_S
 {
+  int COORDINATES[3];
   //小領域のインデックスが全体領域のどのインデックスと対応するかのオフセット量
   int OFFSET_X, OFFSET_Y, OFFSET_Z;  // sub.x + OFFSET_X = field.xになる(-1する必要なし).
   int SUB_N_X, SUB_N_Y, SUB_N_Z;

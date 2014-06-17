@@ -84,6 +84,7 @@ static void calcMBH(void);
 static void allocateMemories(void);
 static void setCoefficient(void);
 static void freeMemories(void);
+static void debugOutput(void);
 
 static void Connection_SendRecvE(void);
 static void Connection_SendRecvH(void);
@@ -143,6 +144,8 @@ static void update(void)
   scatteredWave(Ey, EPS_EY, 0.5, 0.0, 0.5);
 //  MPI_Barrier(MPI_COMM_WORLD);
   Connection_SendRecvE();
+
+  debugOutput();
 }
 
 static void pointLightInCenter(dcomplex *p)
@@ -614,14 +617,14 @@ static void miePrint()
   SubFieldInfo_S subInfo_s = field_getSubFieldInfo_S();
   if(subInfo_s.Rank == 0)
   {
+    /*
     field_outputElliptic("Ex_xy.txt", entireEx, 0);
     field_outputElliptic("Ex_zy.txt", entireEx, 1);
-    field_outputElliptic("Ex_xz.txt", entireEx, 2);
-    
+    field_outputElliptic("Ex_xz.txt", entireEx, 2);    
     field_outputElliptic("Ey_xy.txt", entireEy, 0);
     field_outputElliptic("Ey_zy.txt", entireEy, 1);
     field_outputElliptic("Ey_xz.txt", entireEy, 2);
-    
+    */    
     ntff3D_Frequency(entireEx,entireEy,entireEz,entireHx,entireHy,entireHz);
     free(entireEx);
     free(entireEy);
@@ -629,9 +632,7 @@ static void miePrint()
     free(entireHx);
     free(entireHy);
     free(entireHz);
-  }
-
-  
+  }  
   //勝手にfreeしないように吐き出しが終わるまでは,待つ.
   MPI_Barrier(MPI_COMM_WORLD);
 }
@@ -709,9 +710,48 @@ static void freeMemories()
 }
 
 
-
-
 //============================== Debug ==============================//
+static void outputAllDataComplex(const char *fileName, dcomplex* data)
+{
+  FILE *fp = openFile(fileName);
+  SubFieldInfo_S sInfo_s = field_getSubFieldInfo_S();
+  for(int i=0; i<sInfo_s.SUB_N_CELL; i++)
+  {
+    fprintf(fp,  "%.18lf, %.18lf \n", creal(data[i]), cimag(data[i]));
+  }
+  fclose(fp);
+}
+
+static void debugOutput()
+{
+  char buf[1024];
+  int t = field_getTime();
+  SubFieldInfo_S sInfo_s = field_getSubFieldInfo_S();
+  //sprintf(buf, "Ex_%d_(%d_%d_%d).txt", t, sInfo_s.COORDINATES[0], sInfo_s.COORDINATES[1], sInfo_s.COORDINATES[2]);
+  sprintf(buf, "subEx_%d.txt", t, sInfo_s.COORDINATES[0], sInfo_s.COORDINATES[1], sInfo_s.COORDINATES[2]);
+  outputAllDataComplex(buf, Ex);
+  
+  //sprintf(buf, "Ey_%d_(%d_%d_%d).txt", t, sInfo_s.COORDINATES[0], sInfo_s.COORDINATES[1], sInfo_s.COORDINATES[2]);
+  sprintf(buf, "subEy_%d.txt", t, sInfo_s.COORDINATES[0], sInfo_s.COORDINATES[1], sInfo_s.COORDINATES[2]);
+  outputAllDataComplex(buf, Ey);
+
+  //sprintf(buf, "Ez_%d_(%d_%d_%d).txt", t, sInfo_s.COORDINATES[0], sInfo_s.COORDINATES[1], sInfo_s.COORDINATES[2]);
+  sprintf(buf, "subEz_%d.txt", t, sInfo_s.COORDINATES[0], sInfo_s.COORDINATES[1], sInfo_s.COORDINATES[2]);
+  outputAllDataComplex(buf, Ez);
+
+  //sprintf(buf, "Hx_%d_(%d_%d_%d).txt", t, sInfo_s.COORDINATES[0], sInfo_s.COORDINATES[1], sInfo_s.COORDINATES[2]);
+  sprintf(buf, "subHx_%d.txt", t, sInfo_s.COORDINATES[0], sInfo_s.COORDINATES[1], sInfo_s.COORDINATES[2]);
+  outputAllDataComplex(buf, Hx);
+
+//  sprintf(buf, "Hy_%d_(%d_%d_%d).txt", t, sInfo_s.COORDINATES[0], sInfo_s.COORDINATES[1], sInfo_s.COORDINATES[2]);
+  sprintf(buf, "subHy_%d.txt", t, sInfo_s.COORDINATES[0], sInfo_s.COORDINATES[1], sInfo_s.COORDINATES[2]);
+  outputAllDataComplex(buf, Hy);
+
+//  sprintf(buf, "Hz_%d_(%d_%d_%d).txt", t, sInfo_s.COORDINATES[0], sInfo_s.COORDINATES[1], sInfo_s.COORDINATES[2]);
+  sprintf(buf, "subHz_%d.txt", t, sInfo_s.COORDINATES[0], sInfo_s.COORDINATES[1], sInfo_s.COORDINATES[2]);
+  outputAllDataComplex(buf, Hz);
+}
+
 static bool debugCheck(dcomplex *p)
 {
   SubFieldInfo_S sInfo = field_getSubFieldInfo_S();
