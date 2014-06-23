@@ -133,7 +133,8 @@ static void update(void)
 //  MPI_Barrier(MPI_COMM_WORLD);
   calcJDE();
 //  pointLightInCenter(Ex);
-//  scatteredWave(Ey, EPS_EY, 0.5, 0.0, 0.5);
+  scatteredWave(Ex, EPS_EX, 0.0, 0.5, 0.5);
+  scatteredWave(Ey, EPS_EY, 0.5, 0.0, 0.5);
   scatteredWave(Ez, EPS_EZ, 0.5, 0.5, 0.0);
 //  MPI_Barrier(MPI_COMM_WORLD);
   Connection_SendRecvE();
