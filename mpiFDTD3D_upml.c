@@ -9,14 +9,6 @@
 #include "myComplex.h"
 #include "function.h"
 
-/* about MPI  */
-static int rank;      //MPIのランク
-static int nproc;     //全プロセス数
-static MPI_Datatype X_DIRECTION_DOUBLE_COMPLEX;
-static MPI_Datatype DCOMPLEX_XY; //XY平面
-static MPI_Datatype DCOMPLEX_YZ; //YZ平面
-static MPI_Datatype DCOMPLEX_XZ; //XZ平面
-
 //岡田さんの論文と同じ空間配置にしてみる=>遠方解の時の補完が楽になりそう
 //h = 1, Δt = 1で計算
 //系は右手系
@@ -734,32 +726,6 @@ static void outputAllDataComplex(const char *fileName, dcomplex* data)
 
 static void debugOutput()
 {
-  char buf[1024];
-  int t = field_getTime();
-  SubFieldInfo_S sInfo_s = field_getSubFieldInfo_S();
-  //sprintf(buf, "Ex_%d_(%d_%d_%d).txt", t, sInfo_s.COORDINATES[0], sInfo_s.COORDINATES[1], sInfo_s.COORDINATES[2]);
-  sprintf(buf, "subEx_%d.txt", t, sInfo_s.COORDINATES[0], sInfo_s.COORDINATES[1], sInfo_s.COORDINATES[2]);
-  outputAllDataComplex(buf, Ex);
-  
-  //sprintf(buf, "Ey_%d_(%d_%d_%d).txt", t, sInfo_s.COORDINATES[0], sInfo_s.COORDINATES[1], sInfo_s.COORDINATES[2]);
-  sprintf(buf, "subEy_%d.txt", t, sInfo_s.COORDINATES[0], sInfo_s.COORDINATES[1], sInfo_s.COORDINATES[2]);
-  outputAllDataComplex(buf, Ey);
-
-  //sprintf(buf, "Ez_%d_(%d_%d_%d).txt", t, sInfo_s.COORDINATES[0], sInfo_s.COORDINATES[1], sInfo_s.COORDINATES[2]);
-  sprintf(buf, "subEz_%d.txt", t, sInfo_s.COORDINATES[0], sInfo_s.COORDINATES[1], sInfo_s.COORDINATES[2]);
-  outputAllDataComplex(buf, Ez);
-
-  //sprintf(buf, "Hx_%d_(%d_%d_%d).txt", t, sInfo_s.COORDINATES[0], sInfo_s.COORDINATES[1], sInfo_s.COORDINATES[2]);
-  sprintf(buf, "subHx_%d.txt", t, sInfo_s.COORDINATES[0], sInfo_s.COORDINATES[1], sInfo_s.COORDINATES[2]);
-  outputAllDataComplex(buf, Hx);
-
-//  sprintf(buf, "Hy_%d_(%d_%d_%d).txt", t, sInfo_s.COORDINATES[0], sInfo_s.COORDINATES[1], sInfo_s.COORDINATES[2]);
-  sprintf(buf, "subHy_%d.txt", t, sInfo_s.COORDINATES[0], sInfo_s.COORDINATES[1], sInfo_s.COORDINATES[2]);
-  outputAllDataComplex(buf, Hy);
-
-//  sprintf(buf, "Hz_%d_(%d_%d_%d).txt", t, sInfo_s.COORDINATES[0], sInfo_s.COORDINATES[1], sInfo_s.COORDINATES[2]);
-  sprintf(buf, "subHz_%d.txt", t, sInfo_s.COORDINATES[0], sInfo_s.COORDINATES[1], sInfo_s.COORDINATES[2]);
-  outputAllDataComplex(buf, Hz);
 }
 
 static bool debugCheck(dcomplex *p)
@@ -785,7 +751,6 @@ static void debugPrint()
   const int w_lft = field_subLeft(w);   //一つ左
   const int w_btm = field_subBottom(w); //一つ下
   const int w_frt = field_subFront(w);  //todo
-  const int w_bck = field_subBack(w);  //todo
   const int w_rht = field_subRight(w);
   const int w_top = field_subTop(w);   //一つ上
 
