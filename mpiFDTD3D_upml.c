@@ -144,8 +144,6 @@ static void update(void)
   scatteredWave(Ey, EPS_EY, 0.5, 0.0, 0.5);
 //  MPI_Barrier(MPI_COMM_WORLD);
   Connection_SendRecvE();
-
-  debugOutput();
 }
 
 static void pointLightInCenter(dcomplex *p)
@@ -161,6 +159,7 @@ static void pointLightInCenter(dcomplex *p)
     p[w] += field_pointLight();
   }
 }
+
 //単一波長の散乱波
 // gapX, gapY : Ex-z, Hx-zは格子点からずれた位置に配置され散る為,格子点からのずれを送る必要がある.
 // UPML専用
@@ -616,15 +615,19 @@ static void miePrint()
   MPI_Barrier(MPI_COMM_WORLD);
   SubFieldInfo_S subInfo_s = field_getSubFieldInfo_S();
   if(subInfo_s.Rank == 0)
-  {
-    /*
+  {    
     field_outputElliptic("Ex_xy.txt", entireEx, 0);
     field_outputElliptic("Ex_zy.txt", entireEx, 1);
     field_outputElliptic("Ex_xz.txt", entireEx, 2);    
     field_outputElliptic("Ey_xy.txt", entireEy, 0);
     field_outputElliptic("Ey_zy.txt", entireEy, 1);
     field_outputElliptic("Ey_xz.txt", entireEy, 2);
-    */    
+    field_outputAllDataComplex("Ex.txt", entireEx);
+    field_outputAllDataComplex("Ey.txt", entireEy);
+    field_outputAllDataComplex("Ez.txt", entireEz);
+    field_outputAllDataComplex("Hx.txt", entireHx);
+    field_outputAllDataComplex("Hy.txt", entireHy);
+    field_outputAllDataComplex("Hz.txt", entireHz);
     ntff3D_Frequency(entireEx,entireEy,entireEz,entireHx,entireHy,entireHz);
     free(entireEx);
     free(entireEy);

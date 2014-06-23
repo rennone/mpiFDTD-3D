@@ -43,7 +43,7 @@ int main( int argc, char *argv[] )
   fInfo.h_u_nm    = 5;
   fInfo.pml       = 10;
   fInfo.lambda_nm = 500;
-  fInfo.stepNum   = 1500;
+  fInfo.stepNum   = 2000;
   fInfo.theta_deg = 90;
   fInfo.phi_deg   = 0;
   enum MODEL modelType   = MIE_SPHERE;//NO_MODEL;//LAYER;
