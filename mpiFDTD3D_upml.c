@@ -619,10 +619,12 @@ static void miePrint()
   {    
     field_outputElliptic("Ex_xy.txt", entireEx, 0);
     field_outputElliptic("Ex_zy.txt", entireEx, 1);
-    field_outputElliptic("Ex_xz.txt", entireEx, 2);    
+    field_outputElliptic("Ex_xz.txt", entireEx, 2);
+    
     field_outputElliptic("Ey_xy.txt", entireEy, 0);
     field_outputElliptic("Ey_zy.txt", entireEy, 1);
     field_outputElliptic("Ey_xz.txt", entireEy, 2);
+    
     field_outputElliptic("Ez_xy.txt", entireEz, 0);
     field_outputElliptic("Ez_zy.txt", entireEz, 1);
     field_outputElliptic("Ez_xz.txt", entireEz, 2);
