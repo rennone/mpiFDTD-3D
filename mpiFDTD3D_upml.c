@@ -141,7 +141,8 @@ static void update(void)
 //  MPI_Barrier(MPI_COMM_WORLD);
   calcJDE();
 //  pointLightInCenter(Ex);
-  scatteredWave(Ey, EPS_EY, 0.5, 0.0, 0.5);
+//  scatteredWave(Ey, EPS_EY, 0.5, 0.0, 0.5);
+  scatteredWave(Ex, EPS_EX, 0.0, 0.5, 0.5);
 //  MPI_Barrier(MPI_COMM_WORLD);
   Connection_SendRecvE();
 }
@@ -622,6 +623,10 @@ static void miePrint()
     field_outputElliptic("Ey_xy.txt", entireEy, 0);
     field_outputElliptic("Ey_zy.txt", entireEy, 1);
     field_outputElliptic("Ey_xz.txt", entireEy, 2);
+    field_outputElliptic("Ez_xy.txt", entireEz, 0);
+    field_outputElliptic("Ez_zy.txt", entireEz, 1);
+    field_outputElliptic("Ez_xz.txt", entireEz, 2);
+    
     field_outputAllDataComplex("Ex.txt", entireEx);
     field_outputAllDataComplex("Ey.txt", entireEy);
     field_outputAllDataComplex("Ez.txt", entireEz);
