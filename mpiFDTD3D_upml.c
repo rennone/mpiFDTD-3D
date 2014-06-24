@@ -8,7 +8,7 @@
 #include "mpiFDTD3D_upml.h"
 #include "myComplex.h"
 #include "function.h"
-
+#include "ntff3D.h"
 //岡田さんの論文と同じ空間配置にしてみる=>遠方解の時の補完が楽になりそう
 //h = 1, Δt = 1で計算
 //系は右手系
@@ -110,14 +110,94 @@ void (* mpi_fdtd3D_upml_getInit(void))(void){
   return init;
 }
 
+static void readData(dcomplex *ex,dcomplex *ey,dcomplex *ez,dcomplex *hx,dcomplex *hy,dcomplex *hz)
+{
+  FILE * fpEx= fopen("mieScattering_Ey/Ex.txt", "r");
+  FILE * fpEy= fopen("mieScattering_Ey/Ey.txt", "r");
+  FILE * fpEz= fopen("mieScattering_Ey/Ez.txt", "r");
+  FILE * fpHx= fopen("mieScattering_Ey/Hx.txt", "r");
+  FILE * fpHy= fopen("mieScattering_Ey/Hy.txt", "r");
+  FILE * fpHz= fopen("mieScattering_Ey/Hz.txt", "r");
+
+  if( (fpEx==NULL) || (fpEy==NULL) || (fpEz==NULL) ||
+      (fpHx==NULL) || (fpHy==NULL) || (fpHz==NULL) )
+  {
+    printf("cannot read data files \n");
+    exit(2);
+  }
+  
+  FieldInfo_S fInfo_s = field_getFieldInfo_S();
+  double re, im;
+  for(int i=0; i<fInfo_s.N_CELL; i++)
+  {  
+    fscanf(fpEx, "%lf, %lf\n", &re, &im);
+    ex[i] = re + I*im;
+  }
+
+  for(int i=0; i<fInfo_s.N_CELL; i++)
+  {    
+    fscanf(fpEy, "%lf, %lf\n", &re, &im);
+    ey[i] = re + I*im;
+  }
+  
+  for(int i=0; i<fInfo_s.N_CELL; i++)
+  {    
+    fscanf(fpEz, "%lf, %lf\n", &re, &im);
+    ez[i] = re + I*im;
+  }
+  
+  for(int i=0; i<fInfo_s.N_CELL; i++)
+  {    
+    fscanf(fpHx, "%lf, %lf\n", &re, &im);
+    hx[i] = re + I*im;
+  }
+  
+  for(int i=0; i<fInfo_s.N_CELL; i++)
+  {    
+    fscanf(fpHy, "%lf, %lf\n", &re, &im);
+    hy[i] = re + I*im;
+  }
+  
+  for(int i=0; i<fInfo_s.N_CELL; i++)
+  {    
+    fscanf(fpHz, "%lf, %lf\n", &re, &im);
+    hz[i] = re + I*im;
+  }
+}
+
+static void readDataAndFinish()
+{
+  printf("read Data at Init \n");
+  printf("value of electro magnetic field are set by .txt file, \n");
+  printf("but time step is zero yet, so you should set the time by maxStep if you use a time \n");
+
+  FieldInfo_S fInfo_s = field_getFieldInfo_S();
+  dcomplex *ex = newDComplex(fInfo_s.N_CELL);
+  dcomplex *ey = newDComplex(fInfo_s.N_CELL);
+  dcomplex *ez = newDComplex(fInfo_s.N_CELL);
+  dcomplex *hx = newDComplex(fInfo_s.N_CELL);
+  dcomplex *hy = newDComplex(fInfo_s.N_CELL);
+  dcomplex *hz = newDComplex(fInfo_s.N_CELL);
+  readData(ex,ey,ez,hx,hy,hz);
+
+  ntff3D_Frequency(ex, ey, ez, hx, hy, hz);
+  exit(0);
+}
+
 static void init(){
   allocateMemories();
   setCoefficient();
+
+#ifdef USE_FILE_DATA
+  readDataAndFinish();
+#endif
+  ntff3D_Init();
 }
 
 static void finish(){
   //output();
-  miePrint();
+//  miePrint();
+  ntff3D_TimeOutput();  
   freeMemories();
 }
 
@@ -133,11 +213,11 @@ static void update(void)
 //  MPI_Barrier(MPI_COMM_WORLD);
   calcJDE();
 //  pointLightInCenter(Ex);
-  scatteredWave(Ex, EPS_EX, 0.0, 0.5, 0.5);
   scatteredWave(Ey, EPS_EY, 0.5, 0.0, 0.5);
-  scatteredWave(Ez, EPS_EZ, 0.5, 0.5, 0.0);
 //  MPI_Barrier(MPI_COMM_WORLD);
   Connection_SendRecvE();
+
+  ntff3D_SubTimeCalc(Ex, Ey, Ez, Hx, Hy, Hz);
 }
 
 static void pointLightInCenter(dcomplex *p)
@@ -614,21 +694,26 @@ static void miePrint()
     field_outputElliptic("Ex_zy.txt", entireEx, 1);
     field_outputElliptic("Ex_xz.txt", entireEx, 2);
     
+    
     field_outputElliptic("Ey_xy.txt", entireEy, 0);
     field_outputElliptic("Ey_zy.txt", entireEy, 1);
     field_outputElliptic("Ey_xz.txt", entireEy, 2);
+    
     
     field_outputElliptic("Ez_xy.txt", entireEz, 0);
     field_outputElliptic("Ez_zy.txt", entireEz, 1);
     field_outputElliptic("Ez_xz.txt", entireEz, 2);
     
+
+
     field_outputAllDataComplex("Ex.txt", entireEx);
-    field_outputAllDataComplex("Ey.txt", entireEy);
+    field_outputAllDataComplex("Ey.txt", entireEy);    
     field_outputAllDataComplex("Ez.txt", entireEz);
     field_outputAllDataComplex("Hx.txt", entireHx);
     field_outputAllDataComplex("Hy.txt", entireHy);
     field_outputAllDataComplex("Hz.txt", entireHz);
-    ntff3D_Frequency(entireEx,entireEy,entireEz,entireHx,entireHy,entireHz);
+  
+//    ntff3D_Frequency(entireEx,entireEy,entireEz,entireHx,entireHy,entireHz);
     free(entireEx);
     free(entireEy);
     free(entireEz);

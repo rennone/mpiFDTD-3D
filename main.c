@@ -51,6 +51,8 @@ int main( int argc, char *argv[] )
   MPI_Init( 0, 0 );
   simulator_init(fInfo, modelType, solberType);
 
+  
+  
 #ifndef USE_OPENGL    //only calculate mode
     while(!simulator_isFinish())
     {

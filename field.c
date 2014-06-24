@@ -166,12 +166,8 @@ void field_init(FieldInfo field_info)
   ntff_info.back   = fieldInfo_s.N_PML + 5;
   ntff_info.front  = fieldInfo_s.N_PZ - fieldInfo_s.N_PML - 5;
 
-
-  // todo
-//  NOT_DONE("you have to check RFperC in 3D\n");
-  printf("you have to check RFperC in 3D\n");
-  double len = (ntff_info.top - ntff_info.bottom)/2;
-  ntff_info.RFperC = len*2;
+  double len = max(ntff_info.top - ntff_info.bottom, max(ntff_info.right - ntff_info.left, ntff_info.front - ntff_info.back ))/2;
+  ntff_info.RFperC = len*3;
   ntff_info.arraySize = maxTime + 2*ntff_info.RFperC;
 }
 
@@ -333,7 +329,6 @@ static void mpiSplit(void)
   MPI_Type_vector(subFieldInfo_s.SUB_N_X, subFieldInfo_s.SUB_N_Z,
                   subFieldInfo_s.SUB_N_PYZ, MPI_C_DOUBLE_COMPLEX, &MPI_DCOMPLEX_XZ_PLANE );
   MPI_Type_commit(&MPI_DCOMPLEX_XZ_PLANE);
-
 
   //XY平面は連続する領域が無い(隙間が2種類ある)ので, のりしろも含めた全領域を同期する必要がある.
   MPI_Type_vector(subFieldInfo_s.SUB_N_PX*subFieldInfo_s.SUB_N_PY, 1, subFieldInfo_s.SUB_N_PZ, MPI_C_DOUBLE_COMPLEX, &MPI_DCOMPLEX_XY_PLANE);
