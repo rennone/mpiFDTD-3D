@@ -76,14 +76,18 @@ static void calcMBH(void);
 static void allocateMemories(void);
 static void setCoefficient(void);
 static void freeMemories(void);
+
+#ifdef DEBUG
 static void debugOutput(void);
+#endif
 
 static void Connection_SendRecvE(void);
 static void Connection_SendRecvH(void);
 static void scatteredWave(dcomplex *p, double *eps, double gapX, double gapY, double gapZ);
+static void scatteredPulse(dcomplex *p, double *eps, double gapX, double gapY, double gapZ);
 static void pointLightInCenter(dcomplex *p);
 
-static void miePrint(void);
+static void output(void);
 
 static void initializeElectroMagneticField(void);
 
@@ -94,8 +98,8 @@ dcomplex* mpi_fdtd3D_upml_getHx(void){  return Hx;}
 dcomplex* mpi_fdtd3D_upml_getHy(void){  return Hy;}
 dcomplex* mpi_fdtd3D_upml_getHz(void){  return Hz;}
 
-double*   mpi_fdtd3D_upml_getEps(void){  return EPS_EY;}
-dcomplex*   mpi_fdtd3D_upml_getData(void){  return Ey;}
+double*   mpi_fdtd3D_upml_getEps(void) {  return EPS_EY;}
+dcomplex* mpi_fdtd3D_upml_getData(void){  return Ey;}
 
 void (* mpi_fdtd3D_upml_getUpdate(void))(void){
   return update;
@@ -189,15 +193,14 @@ static void init(){
   setCoefficient();
 
 #ifdef USE_FILE_DATA
-  readDataAndFinish();
+//  readDataAndFinish();
 #endif
   ntff3D_Init();
 }
 
 static void finish(){
-  //output();
-//  miePrint();
-  ntff3D_TimeOutput();  
+  output();
+//  ntff3D_TimeOutput();  
   freeMemories();
 }
 
@@ -208,16 +211,18 @@ static void reset()
 //Update
 static void update(void)
 {
+
   calcMBH();
   Connection_SendRecvH();
 //  MPI_Barrier(MPI_COMM_WORLD);
   calcJDE();
-//  pointLightInCenter(Ex);
+
   scatteredWave(Ey, EPS_EY, 0.5, 0.0, 0.5);
+//  scatteredPulse(Ey, EPS_EY, 0.5, 0.0, 0.5);
 //  MPI_Barrier(MPI_COMM_WORLD);
   Connection_SendRecvE();
 
-  ntff3D_SubTimeCalc(Ex, Ey, Ez, Hx, Hy, Hz);
+//  ntff3D_SubTimeCalc(Ex, Ey, Ez, Hx, Hy, Hz);
 }
 
 static void pointLightInCenter(dcomplex *p)
@@ -249,7 +254,7 @@ static void scatteredWave(dcomplex *p, double *eps, double gapX, double gapY, do
   double w_s_time = field_getOmega() * field_getTime();
   
   SubFieldInfo_S subInfo_s = field_getSubFieldInfo_S();
-  int nextX   = 2*subInfo_s.SUB_N_PZ;
+  int nextX   = 2*subInfo_s.SUB_N_PZ; //最後ののりしろの分１行多くずれる
   int endX    = subInfo_s.SUB_N_PX-1;
   int endY    = subInfo_s.SUB_N_PY-1;
   int endZ    = subInfo_s.SUB_N_PZ-1;
@@ -273,6 +278,48 @@ static void scatteredWave(dcomplex *p, double *eps, double gapX, double gapY, do
         //p[k] -= かも(岡田さんのメール参照)
         p[w] += (ray_coef_EPS_0/eps[w] - ray_coef)*cexp( I*(kr-w_s_time) );
 //        p[w] += ray_coef*(EPSILON_0_S/eps[w] - 1.0)*cexp( I*(kr-w_s_time) );
+      }
+}
+
+//パルス波の散乱波
+// gapX, gapY : Ex-z, Hx-zは格子点からずれた位置に配置され散る為,格子点からのずれを送る必要がある.
+// UPML専用
+static void scatteredPulse(dcomplex *p, double *eps, double gapX, double gapY, double gapZ)
+{
+  double theta_rad = field_getTheta()*M_PI/180.0;
+  double phi_rad   = field_getPhi()  *M_PI/180.0;
+  double cos_cos_per_c = cos(phi_rad)*cos(theta_rad)/C_0_S;
+  double cos_sin_per_c = cos(phi_rad)*sin(theta_rad)/C_0_S;
+  double sin_per_c     = sin(phi_rad)/C_0_S;
+  
+  SubFieldInfo_S subInfo_s = field_getSubFieldInfo_S();
+  int nextX   = 2*subInfo_s.SUB_N_PZ; //最後ののりしろの分１行多くずれる
+  int endX    = subInfo_s.SUB_N_PX-1;
+  int endY    = subInfo_s.SUB_N_PY-1;
+  int endZ    = subInfo_s.SUB_N_PZ-1;
+  int offsetX = subInfo_s.OFFSET_X + gapX;
+  int offsetY = subInfo_s.OFFSET_Y + gapY;
+  int offsetZ = subInfo_s.OFFSET_Z + gapZ;
+  
+  double w_s  = field_getOmega();
+  const double beam_width = 50; //パルスの幅
+  FieldInfo_S fInfo_s = field_getFieldInfo_S();
+  
+  //waveAngleにより, t0の値を変えないとちょうどいいところにピークが来なため,それを計算.
+  const double center_peak = (fInfo_s.N_PX/2.0+gapX)*cos_cos_per_c + (fInfo_s.N_PY/2+gapY)*cos_sin_per_c + (fInfo_s.N_PZ/2+gapZ)*sin_per_c; //中心にピークがくる時間
+  const double t_minus_t0 = field_getTime()-center_peak + 100; // t-t0. 常に100ステップの時に,領域の中心にピークが来るようにする.
+  int w = field_subIndex(1,1,1);
+  for(int i=1; i<endX; i++, w+=nextX) 
+    for(int j=1; j<endY; j++, w+=2) 
+      for(int k=1; k<endZ; k++, w+=1)
+      {
+        if(eps[w] == EPSILON_0_S)        // 空気中は追加の散乱波は0なので無視する.
+          continue;
+        double x = i+offsetX; double y = j+offsetY;  double z = k+offsetZ;
+
+        const double r = x*cos_cos_per_c + y*cos_sin_per_c + z*sin_per_c - (t_minus_t0); // (x*cos+y*sin)/C - (time-t0)
+        const double gaussian_coef = exp( -pow(r/beam_width, 2 ) );
+        p[w] += gaussian_coef*(EPSILON_0_S/eps[w] - 1)*cexp(I*r*w_s);     //p[k] -= かも(岡田さんのメール参照)
       }
 }
 
@@ -677,7 +724,7 @@ static dcomplex* unifyToRank0(dcomplex *phi)
 
 //---------------------メモリの解放--------------------//
 
-static void miePrint()
+static void output()
 {  
   dcomplex *entireEx = unifyToRank0(Ex);
   dcomplex *entireEy = unifyToRank0(Ey);
@@ -689,31 +736,25 @@ static void miePrint()
   MPI_Barrier(MPI_COMM_WORLD);
   SubFieldInfo_S subInfo_s = field_getSubFieldInfo_S();
   if(subInfo_s.Rank == 0)
-  {    
-    field_outputElliptic("Ex_xy.txt", entireEx, 0);
-    field_outputElliptic("Ex_zy.txt", entireEx, 1);
-    field_outputElliptic("Ex_xz.txt", entireEx, 2);
-    
-    
-    field_outputElliptic("Ey_xy.txt", entireEy, 0);
-    field_outputElliptic("Ey_zy.txt", entireEy, 1);
-    field_outputElliptic("Ey_xz.txt", entireEy, 2);
-    
-    
-    field_outputElliptic("Ez_xy.txt", entireEz, 0);
-    field_outputElliptic("Ez_zy.txt", entireEz, 1);
-    field_outputElliptic("Ez_xz.txt", entireEz, 2);
-    
-
-
+  {
     field_outputAllDataComplex("Ex.txt", entireEx);
     field_outputAllDataComplex("Ey.txt", entireEy);    
     field_outputAllDataComplex("Ez.txt", entireEz);
     field_outputAllDataComplex("Hx.txt", entireHx);
     field_outputAllDataComplex("Hy.txt", entireHy);
     field_outputAllDataComplex("Hz.txt", entireHz);
+    
+    field_outputElliptic("Ex_xy.txt", entireEx, 0);
+    field_outputElliptic("Ex_zy.txt", entireEx, 1);
+    field_outputElliptic("Ex_xz.txt", entireEx, 2);    
+    field_outputElliptic("Ey_xy.txt", entireEy, 0);
+    field_outputElliptic("Ey_zy.txt", entireEy, 1);
+    field_outputElliptic("Ey_xz.txt", entireEy, 2);
+    field_outputElliptic("Ez_xy.txt", entireEz, 0);
+    field_outputElliptic("Ez_zy.txt", entireEz, 1);
+    field_outputElliptic("Ez_xz.txt", entireEz, 2);    
   
-//    ntff3D_Frequency(entireEx,entireEy,entireEz,entireHx,entireHy,entireHz);
+    ntff3D_Frequency(entireEx,entireEy,entireEz,entireHx,entireHy,entireHz);
     free(entireEx);
     free(entireEy);
     free(entireEz);
@@ -799,6 +840,7 @@ static void freeMemories()
 
 
 //============================== Debug ==============================//
+#ifdef DEBUG
 static void outputAllDataComplex(const char *fileName, dcomplex* data)
 {
   FILE *fp = openFile(fileName);
@@ -856,5 +898,5 @@ static void debugPrint()
   
   printf("dJ1( %lf , %lf,  %lf) , dJ2(%lf , %lf,  %lf ) dM1( %lf, %lf, %lf)  dM2(%lf, %lf, %lf) \n ",
          creal(dJx1), creal(dJy1), creal(dJz1), creal(dJx2), creal(dJy2), creal(dJz2), creal(dMx1), creal(dMy1), creal(dMz1), creal(dMx2), creal(dMy2), creal(dMz2) );
-
 }
+#endif

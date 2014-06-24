@@ -40,7 +40,7 @@ int main( int argc, char *argv[] )
   fInfo.width_nm  = 500;
   fInfo.height_nm = 500;
   fInfo.depth_nm  = 500;
-  fInfo.h_u_nm    = 5;
+  fInfo.h_u_nm    = 2;
   fInfo.pml       = 10;
   fInfo.lambda_nm = 500;
   fInfo.stepNum   = 2000;
@@ -68,7 +68,7 @@ int main( int argc, char *argv[] )
     SubFieldInfo_S subInfo = field_getSubFieldInfo_S(); 
     int windowX = 1.0*subInfo.OFFSET_X / subInfo.SUB_N_X * WINDOW_WIDTH;
     int windowY = 800-1.0*subInfo.OFFSET_Y/subInfo.SUB_N_Y * WINDOW_HEIGHT - WINDOW_HEIGHT;
-enum COLOR_MODE colorMode = CABS;
+enum COLOR_MODE colorMode = CREAL;
 
     glutInit(&argc, argv);
     glutInitWindowPosition(windowX,windowY);

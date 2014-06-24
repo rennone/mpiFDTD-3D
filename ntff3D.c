@@ -572,6 +572,5 @@ void ntff3D_TimeOutput()
     free(Eth);
     free(Eph);
   }
-
 }
 

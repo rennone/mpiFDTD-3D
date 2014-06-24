@@ -260,7 +260,6 @@ void drawer_subFieldPaintImage3(dcomplex *phis, double *eps, enum DISPLAY_PLANE 
   bool YY = (sInfo.OFFSET_Y < fInfo.N_PY/2) && ( fInfo.N_PY/2 <= sInfo.OFFSET_Y + sInfo.SUB_N_Y);
   bool ZZ = (sInfo.OFFSET_Z < fInfo.N_PZ/2) && ( fInfo.N_PZ/2 <= sInfo.OFFSET_Z + sInfo.SUB_N_Z);
 
-
   int fixedX = fInfo.N_PX/2 - sInfo.OFFSET_X;
   int fixedY = fInfo.N_PY/2 - sInfo.OFFSET_Y;
   int fixedZ = fInfo.N_PZ/2 - sInfo.OFFSET_Z;
@@ -329,7 +328,7 @@ void drawer_finish()
 //--------------------Color Trancform---------------------//
 static void colorTransform(double phi, colorf *col)
 {
-  double range = 1.0; //波の振幅  
+  double range = 0.5; //波の振幅  
   double ab_phi = phi < 0 ? -phi : phi;
   double a = ab_phi < range ? (ab_phi <  range/3.0 ? 3.0/range*ab_phi : (-3.0/4.0/range*ab_phi+1.25) ) : 0.5;
   
