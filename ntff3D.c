@@ -1,10 +1,12 @@
-#include "ntff3D.h"
 #include <math.h>
+#include <stdlib.h>
+#include "ntff3D.h"
 #include "field.h"
 #include "function.h"
 #include "myComplex.h"
 
 dcomplex *Ux,*Uy,*Uz,*Wx,*Wy,*Wz;
+double R; //観測点までの距離
 
 void ntff3D_Init()
 {
@@ -16,6 +18,8 @@ void ntff3D_Init()
   Wx = newDComplex(nInfo.arraySize * 360);
   Wy = newDComplex(nInfo.arraySize * 360);
   Wz = newDComplex(nInfo.arraySize * 360);
+
+  R = 1.0e6 * field_getLambda();  
 }
 
 // 係数と最低限必要なインデックスをまとめて求める為のマクロ
@@ -66,7 +70,6 @@ static void frequencyNTFF(dcomplex *Ex, dcomplex *Ey,dcomplex *Ez,
                           dcomplex *Hx, dcomplex *Hy, dcomplex *Hz,
                           dcomplex *Eth, dcomplex *Eph, int theta, int phi)
 {
-  double R = 1.0e6 * field_getLambda();
   double k_s = field_getK();
   dcomplex Coeffician = I * k_s / (4*M_PI*R) * cexp(-I*k_s*R); //
   NTFFInfo nInfo = field_getNTFFInfo();
@@ -163,7 +166,7 @@ static void frequencyNTFF(dcomplex *Ex, dcomplex *Ey,dcomplex *Ez,
       
   double sx = cos(theta_rad)*cos(phi_rad);
   double sy = cos(theta_rad)*sin(phi_rad);
-  double sz = -sin(theta_rad); //宇野先生の本では -sin(theta)になってるが, 2Dでは-cos(theta)でうまくいった
+  double sz = -sin(theta_rad);
   double px = -sin(phi_rad);
   double py = cos(phi_rad);
 
@@ -180,8 +183,6 @@ void ntff3D_Frequency( dcomplex *Ex, dcomplex *Ey,dcomplex *Ez,
                        dcomplex *Hx, dcomplex *Hy, dcomplex *Hz)
 {
   dcomplex Eth, Eph;
-//  frequencyNTFF(Ex, Ey, Ez, Hx, Hy, Hz, Eth, Eph);
-
   //YZ平面の遠方解を出力
   {
     FILE *fpEth_yz = openFile("Eth_yz.txt");
@@ -450,7 +451,7 @@ void ntff3D_SubTimeCalc(dcomplex *Ex,dcomplex *Ey,dcomplex *Ez,
           calc(timeH+timeShift,-hz, Wx_ang);
           calc(timeH+timeShift, hx, Wz_ang);
         }
-    }    
+    }
   }
 }
 
@@ -460,7 +461,6 @@ static void ntff3D_TimeTranslate(dcomplex *Ux_ang, dcomplex *Uy_ang, dcomplex *U
                                  int theta, int phi)
 {
   const double w_s = field_getOmega();
-  const double R = 1.0e6 * field_getLambda();
 
   const double complex coef = 1.0/(4*M_PI*C_0_S*R)*csqrt( 2*M_PI*C_0_S/(I*w_s) );
   const int maxTime = field_getMaxTime();
@@ -513,6 +513,7 @@ static void unifyToRank0(dcomplex *p)
   }
 }
 
+// データの書き出し.
 void outputTimeDomainData(const char *fileName, dcomplex *data)
 {
   char name[512];
@@ -546,7 +547,6 @@ void ntff3D_TimeOutput()
   SubFieldInfo_S sInfo_s = field_getSubFieldInfo_S();
   if(sInfo_s.Rank == 0)
   {
-    const int maxTime = field_getMaxTime();
     NTFFInfo nInfo = field_getNTFFInfo();
     dcomplex *Eth, *Eph;
     int size = 360*nInfo.arraySize;

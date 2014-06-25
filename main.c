@@ -44,8 +44,8 @@ int main( int argc, char *argv[] )
   fInfo.pml       = 10;
   fInfo.lambda_nm = 500;
   fInfo.stepNum   = 2000;
-  fInfo.theta_deg = 90;
-  fInfo.phi_deg   = 0;
+  fInfo.theta_deg =  0;
+  fInfo.phi_deg   = 90;
   enum MODEL modelType   = MIE_SPHERE;//NO_MODEL;//LAYER;
   enum SOLVER solberType = MPI_FDTD_3D;
   MPI_Init( 0, 0 );

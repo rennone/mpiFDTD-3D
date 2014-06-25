@@ -193,7 +193,7 @@ static void init(){
   setCoefficient();
 
 #ifdef USE_FILE_DATA
-  readDataAndFinish();
+//  readDataAndFinish();
 #endif
   ntff3D_Init();
 }
@@ -248,9 +248,9 @@ static void scatteredWave(dcomplex *p, double *eps, double gapX, double gapY, do
   double theta_rad = field_getTheta()*M_PI/180.0;
   double phi_rad   = field_getPhi()*M_PI/180.0;
 
-  double ks_cos_cos = cos(phi_rad)*cos(theta_rad)*k_s;
-  double ks_cos_sin = cos(phi_rad)*sin(theta_rad)*k_s;
-  double ks_sin     = sin(phi_rad)*k_s;
+  double ks_sin_cos = sin(theta_rad)*cos(phi_rad)*k_s;
+  double ks_sin_sin = sin(theta_rad)*sin(phi_rad)*k_s;
+  double ks_cos     = cos(theta_rad)*k_s;
   double w_s_time = field_getOmega() * field_getTime();
   
   SubFieldInfo_S subInfo_s = field_getSubFieldInfo_S();
@@ -274,7 +274,7 @@ static void scatteredWave(dcomplex *p, double *eps, double gapX, double gapY, do
         double y = j+offsetY;
         double z = k+offsetZ;
 
-        double kr = x*ks_cos_cos + y*ks_sin + z*ks_cos_sin;
+        double kr = x*ks_sin_cos + y*ks_sin_cos + z*ks_cos;
         //p[k] -= かも(岡田さんのメール参照)
         p[w] += (ray_coef_EPS_0/eps[w] - ray_coef)*cexp( I*(kr-w_s_time) );
 //        p[w] += ray_coef*(EPSILON_0_S/eps[w] - 1.0)*cexp( I*(kr-w_s_time) );
@@ -288,9 +288,9 @@ static void scatteredPulse(dcomplex *p, double *eps, double gapX, double gapY, d
 {
   double theta_rad = field_getTheta()*M_PI/180.0;
   double phi_rad   = field_getPhi()  *M_PI/180.0;
-  double cos_cos_per_c = cos(phi_rad)*cos(theta_rad)/C_0_S;
-  double cos_sin_per_c = cos(phi_rad)*sin(theta_rad)/C_0_S;
-  double sin_per_c     = sin(phi_rad)/C_0_S;
+  double sin_cos_per_c = sin(theta_rad)*cos(phi_rad)/C_0_S;
+  double sin_sin_per_c = sin(theta_rad)*sin(phi_rad)/C_0_S;
+  double cos_per_c     = cos(theta_rad)/C_0_S;
   
   SubFieldInfo_S subInfo_s = field_getSubFieldInfo_S();
   int nextX   = 2*subInfo_s.SUB_N_PZ; //最後ののりしろの分１行多くずれる
@@ -306,7 +306,7 @@ static void scatteredPulse(dcomplex *p, double *eps, double gapX, double gapY, d
   FieldInfo_S fInfo_s = field_getFieldInfo_S();
   
   //waveAngleにより, t0の値を変えないとちょうどいいところにピークが来なため,それを計算.
-  const double center_peak = (fInfo_s.N_PX/2.0+gapX)*cos_cos_per_c + (fInfo_s.N_PY/2+gapY)*cos_sin_per_c + (fInfo_s.N_PZ/2+gapZ)*sin_per_c; //中心にピークがくる時間
+  const double center_peak = (fInfo_s.N_PX/2.0+gapX)*sin_cos_per_c + (fInfo_s.N_PY/2+gapY)*sin_sin_per_c + (fInfo_s.N_PZ/2+gapZ)*cos_per_c; //中心にピークがくる時間
   const double t_minus_t0 = field_getTime()-center_peak + 100; // t-t0. 常に100ステップの時に,領域の中心にピークが来るようにする.
   int w = field_subIndex(1,1,1);
   for(int i=1; i<endX; i++, w+=nextX) 
@@ -317,7 +317,7 @@ static void scatteredPulse(dcomplex *p, double *eps, double gapX, double gapY, d
           continue;
         double x = i+offsetX; double y = j+offsetY;  double z = k+offsetZ;
 
-        const double r = x*cos_cos_per_c + y*cos_sin_per_c + z*sin_per_c - (t_minus_t0); // (x*cos+y*sin)/C - (time-t0)
+        const double r = x*sin_cos_per_c + y*sin_sin_per_c + z*cos_per_c - (t_minus_t0); // (x*cos+y*sin)/C - (time-t0)
         const double gaussian_coef = exp( -pow(r/beam_width, 2 ) );
         p[w] += gaussian_coef*(EPSILON_0_S/eps[w] - 1)*cexp(I*r*w_s);     //p[k] -= かも(岡田さんのメール参照)
       }
