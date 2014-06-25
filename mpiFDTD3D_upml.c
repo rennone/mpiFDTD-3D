@@ -116,12 +116,12 @@ void (* mpi_fdtd3D_upml_getInit(void))(void){
 
 static void readData(dcomplex *ex,dcomplex *ey,dcomplex *ez,dcomplex *hx,dcomplex *hy,dcomplex *hz)
 {
-  FILE * fpEx= fopen("mieScattering_Ey/Ex.txt", "r");
-  FILE * fpEy= fopen("mieScattering_Ey/Ey.txt", "r");
-  FILE * fpEz= fopen("mieScattering_Ey/Ez.txt", "r");
-  FILE * fpHx= fopen("mieScattering_Ey/Hx.txt", "r");
-  FILE * fpHy= fopen("mieScattering_Ey/Hy.txt", "r");
-  FILE * fpHz= fopen("mieScattering_Ey/Hz.txt", "r");
+  FILE * fpEx= fopen("mieScattering_Ey_h_5nm/Ex.txt", "r");
+  FILE * fpEy= fopen("mieScattering_Ey_h_5nm/Ey.txt", "r");
+  FILE * fpEz= fopen("mieScattering_Ey_h_5nm/Ez.txt", "r");
+  FILE * fpHx= fopen("mieScattering_Ey_h_5nm/Hx.txt", "r");
+  FILE * fpHy= fopen("mieScattering_Ey_h_5nm/Hy.txt", "r");
+  FILE * fpHz= fopen("mieScattering_Ey_h_5nm/Hz.txt", "r");
 
   if( (fpEx==NULL) || (fpEy==NULL) || (fpEz==NULL) ||
       (fpHx==NULL) || (fpHy==NULL) || (fpHz==NULL) )
@@ -193,7 +193,7 @@ static void init(){
   setCoefficient();
 
 #ifdef USE_FILE_DATA
-//  readDataAndFinish();
+  readDataAndFinish();
 #endif
   ntff3D_Init();
 }

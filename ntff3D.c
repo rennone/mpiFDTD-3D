@@ -64,7 +64,7 @@ void ntff3D_Init()
 
 static void frequencyNTFF(dcomplex *Ex, dcomplex *Ey,dcomplex *Ez,
                           dcomplex *Hx, dcomplex *Hy, dcomplex *Hz,
-                          dcomplex Eth[360][360], dcomplex Eph[360][360], int theta, int phi)
+                          dcomplex *Eth, dcomplex *Eph, int theta, int phi)
 {
   double R = 1.0e6 * field_getLambda();
   double k_s = field_getK();
@@ -89,16 +89,17 @@ static void frequencyNTFF(dcomplex *Ex, dcomplex *Ey,dcomplex *Ez,
   //上下は, 蓋をするように全範囲を網羅
   //上の面 n=(0,1,0)
   // (N =) J = n × H = ( hz, 0, -hx)
-  // (L =) M = E × n = (-ez, 0,  ex)
+// (L =) M = E × n = (-ez, 0,  ex)
   for(int i=lt; i<=rt; i++)
     for (int k=bk; k<=ft; k++ )
     {      
       CALC_COEFF(i, tp, k);
       int w = field_index(i, tp, k);
-      EH_IN_XZ(w, ex,ez, hx,hz);
+      EH_IN_XZ(w, ex, ez, hx, hz);
       Nx += hz*coef;      Nz -= hx*coef;
       Lx -= ez*coef;      Lz += ex*coef;
     }
+  
   //下の面 n=(0,-1,0)
   // (N =) J = n × H = (-hz, 0, hx)
   // (L =) M = E × n = ( ez, 0,-ex)
@@ -113,25 +114,27 @@ static void frequencyNTFF(dcomplex *Ex, dcomplex *Ey,dcomplex *Ez,
     }
 
   //前の面 n=(0, 0, 1)
-  // (N =) J = n × H = ( -hy, hx, 0)  // (L =) M = E × n = ( ey ,-ex,  0)
+  // (N =) J = n × H = ( -hy, hx, 0)
+  // (L =) M = E × n = ( ey ,-ex,  0)
   for ( int i=lt; i<rt; i++ )
     for( int j=bm+1; j<tp; j++) {
-      CALC_COEFF(i, j, ft);// coefやw を求める
+      CALC_COEFF(i, j, ft);
       int w = field_index(i, j, ft);
       EH_IN_XY(w, ex, ey, hx, hy);//ex, ey, hx, hyを補完して求める
-      Lx += ey*coef;      Ly -= ex*coef;
       Nx -= hy*coef;      Ny += hx*coef;
+      Lx += ey*coef;      Ly -= ex*coef;
     }
 
   //後の面 n=(0, 0, -1)
-  // (N =) J = n × H = ( hy,-hx, 0)  // (L =) M = E × n = (-ey, ex,  0)
+  // (N =) J = n × H = ( hy,-hx, 0)
+  // (L =) M = E × n = (-ey, ex,  0)
   for ( int i=lt; i<rt; i++ )
     for( int j=bm+1; j<tp; j++) {
       CALC_COEFF(i, j, bk); //このファイルの最初に書いてある
       int w = field_index(i, j, bk);
-      EH_IN_XY(w, ex, ey, hx, hy);//ex, ey, hx, hyを補完して求める          
-      Lx -= ey*coef;      Ly += ex*coef;
+      EH_IN_XY(w, ex, ey, hx, hy);//ex, ey, hx, hyを補完して求める
       Nx += hy*coef;      Ny -= hx*coef;
+      Lx -= ey*coef;      Ly += ex*coef;      
     }
 
   //右の面 n=(1,0,0)
@@ -169,14 +172,14 @@ static void frequencyNTFF(dcomplex *Ex, dcomplex *Ey,dcomplex *Ez,
   dcomplex Lth = sx*Lx + sy*Ly + sz*Lz;
   dcomplex Lph = px*Lx + py*Ly;
 
-  Eth[theta][phi] = Coeffician*(-Z0*Nth - Lph);
-  Eph[theta][phi] = Coeffician*(-Z0*Nph + Lth);
+  *Eth = Coeffician*(Z0*Nth - Lph); //宇野先生の本では Nth, Nphに-がついていた.
+  *Eph = Coeffician*(Z0*Nph + Lth);
 }
 
 void ntff3D_Frequency( dcomplex *Ex, dcomplex *Ey,dcomplex *Ez,
                        dcomplex *Hx, dcomplex *Hy, dcomplex *Hz)
 {
-  dcomplex Eth[360][360], Eph[360][360];
+  dcomplex Eth, Eph;
 //  frequencyNTFF(Ex, Ey, Ez, Hx, Hy, Hz, Eth, Eph);
 
   //YZ平面の遠方解を出力
@@ -185,12 +188,11 @@ void ntff3D_Frequency( dcomplex *Ex, dcomplex *Ey,dcomplex *Ez,
     FILE *fpEph_yz = openFile("Eph_yz.txt");
     for(int theta=0, phi=90; theta<360; theta++)
     {
-      frequencyNTFF(Ex, Ey, Ez, Hx, Hy, Hz, Eth, Eph, theta, phi);
-      fprintf(fpEth_yz, "%.18lf %.18lf\n", creal(Eth[theta][phi]), cimag(Eth[theta][phi]));
-      fprintf(fpEph_yz, "%.18lf %.18lf\n", creal(Eph[theta][phi]), cimag(Eph[theta][phi]));
+      frequencyNTFF(Ex, Ey, Ez, Hx, Hy, Hz, &Eth, &Eph, theta, phi);
+      fprintf(fpEth_yz, "%.18lf %.18lf\n", creal(Eth), cimag(Eth));
+      fprintf(fpEph_yz, "%.18lf %.18lf\n", creal(Eph), cimag(Eph));
     }
   }
-
   
   //XZ平面の遠方解を出力
   {
@@ -198,9 +200,9 @@ void ntff3D_Frequency( dcomplex *Ex, dcomplex *Ey,dcomplex *Ez,
     FILE *fpEph_xz = openFile("Eph_xz.txt");
     for(int theta=0, phi=0; theta<360; theta++)
     {
-      frequencyNTFF(Ex, Ey, Ez, Hx, Hy, Hz, Eth, Eph, theta, phi);
-      fprintf(fpEth_xz, "%.18lf %.18lf\n", creal(Eth[theta][phi]), cimag(Eth[theta][phi]));
-      fprintf(fpEph_xz, "%.18lf %.18lf\n", creal(Eph[theta][phi]), cimag(Eph[theta][phi]));
+      frequencyNTFF(Ex, Ey, Ez, Hx, Hy, Hz, &Eth, &Eph, theta, phi);
+      fprintf(fpEth_xz, "%.18lf %.18lf\n", creal(Eth), cimag(Eth));
+      fprintf(fpEph_xz, "%.18lf %.18lf\n", creal(Eph), cimag(Eph));
     }
   }
   
@@ -210,9 +212,9 @@ void ntff3D_Frequency( dcomplex *Ex, dcomplex *Ey,dcomplex *Ez,
     FILE *fpEph_zy = openFile("Eph_xy.txt");
     for(int theta=90, phi=0; phi<360; phi++)
     {
-      frequencyNTFF(Ex, Ey, Ez, Hx, Hy, Hz, Eth, Eph, theta, phi);
-      fprintf(fpEth_zy, "%.18lf %.18lf\n", creal(Eth[theta][phi]), cimag(Eth[theta][phi]));
-      fprintf(fpEph_zy, "%.18lf %.18lf\n", creal(Eph[theta][phi]), cimag(Eph[theta][phi]));
+      frequencyNTFF(Ex, Ey, Ez, Hx, Hy, Hz, &Eth, &Eph, theta, phi);
+      fprintf(fpEth_zy, "%.18lf %.18lf\n", creal(Eth), cimag(Eth));
+      fprintf(fpEph_zy, "%.18lf %.18lf\n", creal(Eph), cimag(Eph));
     }
   }
 }

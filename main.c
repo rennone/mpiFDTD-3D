@@ -40,7 +40,7 @@ int main( int argc, char *argv[] )
   fInfo.width_nm  = 500;
   fInfo.height_nm = 500;
   fInfo.depth_nm  = 500;
-  fInfo.h_u_nm    = 2;
+  fInfo.h_u_nm    = 5;
   fInfo.pml       = 10;
   fInfo.lambda_nm = 500;
   fInfo.stepNum   = 2000;
