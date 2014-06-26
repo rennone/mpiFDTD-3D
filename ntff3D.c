@@ -462,7 +462,7 @@ static void ntff3D_TimeTranslate(dcomplex *Ux_ang, dcomplex *Uy_ang, dcomplex *U
 {
   const double w_s = field_getOmega();
 
-  const double complex coef = 1.0/(4*M_PI*C_0_S*R)*csqrt( 2*M_PI*C_0_S/(I*w_s) );
+  const double complex coef = 1.0/(4*M_PI*C_0_S*R);
   const int maxTime = field_getMaxTime();
 
   double ToRad = M_PI/180.0;

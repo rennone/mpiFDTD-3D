@@ -46,7 +46,7 @@ static double eps(double x, double y, double z, int col, int row, int dep)
         double sz = _z + dep*k/split;
 
         //上下に飛び出ていないか確認
-        if(sy < 0 || sy > height)
+        if(sy < 0 || sy >= height)
           continue;
       
         //thickで割ったあまり(double型なのでこんなやり方をしている)
@@ -76,10 +76,10 @@ static double eps(double x, double y, double z, int col, int row, int dep)
 
 double ( *multilayerModel_EPS(void))(double, double, double, int, int, int)
 {
-  width_s[0]     = field_toCellUnit(300);
-  width_s[1]     = field_toCellUnit(300);
-  thickness_s[0] = field_toCellUnit(90);
-  thickness_s[1] = field_toCellUnit(90);
+  width_s[0]     = field_toCellUnit(100);
+  width_s[1]     = field_toCellUnit(100);
+  thickness_s[0] = field_toCellUnit(20);
+  thickness_s[1] = field_toCellUnit(20);
   layerNum = 5;
   n[0] = 1.56;
   n[1] = 1.0;

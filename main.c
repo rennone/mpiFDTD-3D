@@ -46,7 +46,7 @@ int main( int argc, char *argv[] )
   fInfo.stepNum   = 2000;
   fInfo.theta_deg =  0;
   fInfo.phi_deg   = 90;
-  enum MODEL modelType   = MIE_SPHERE;//NO_MODEL;//LAYER;
+  enum MODEL modelType   = MIE_SPHERE;//LAYER;//NO_MODEL;
   enum SOLVER solberType = MPI_FDTD_3D;
   MPI_Init( 0, 0 );
   simulator_init(fInfo, modelType, solberType);
@@ -102,7 +102,7 @@ static void drawSubField()
   FieldInfo_S fInfo = field_getFieldInfo_S();
   SubFieldInfo_S sInfo = field_getSubFieldInfo_S();
 
-  drawer_subFieldPaintImage3(data3D, eps3D, ZY_PLANE);
+  drawer_subFieldPaintImage3(data3D, eps3D, ALL_PLANE);
 }
 
 void display(void)

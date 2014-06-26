@@ -23,7 +23,7 @@ typedef struct {
  GLfloat r,g,b;
 }colorf;
 
-#define TEX_SIZE 512
+#define TEX_SIZE 256
 #define TEX_NX 512
 #define TEX_NY 512
 
