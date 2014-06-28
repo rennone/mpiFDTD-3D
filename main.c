@@ -43,7 +43,7 @@ int main( int argc, char *argv[] )
   fInfo.h_u_nm    = 5;
   fInfo.pml       = 10;
   fInfo.lambda_nm = 500;
-  fInfo.stepNum   = 2000;
+  fInfo.stepNum   = 10;
   fInfo.theta_deg =  0;
   fInfo.phi_deg   = 90;
   enum MODEL modelType   = MIE_SPHERE;//LAYER;//NO_MODEL;
@@ -54,14 +54,22 @@ int main( int argc, char *argv[] )
   
   
 #ifndef USE_OPENGL    //only calculate mode
+  int lambda_nm = field_toPhysicalUnit(field_getLambda());
+  while(lambda_nm < 650)
+  {
     while(!simulator_isFinish())
     {
        simulator_calc();       
        //   MPI_Barrier(MPI_COMM_WORLD);
     }
     MPI_Barrier(MPI_COMM_WORLD);
-    simulator_finish();
-    MPI_Finalize();
+    simulator_reset();
+    lambda_nm += 10;
+    field_setLambda(lambda_nm);
+    printf("next Simulation. lambda = %d\n", lambda_nm);
+  }
+  simulator_finish();
+  MPI_Finalize();
 #endif
 
 #ifdef USE_OPENGL
@@ -126,7 +134,7 @@ void idle(void)
     MPI_Barrier(MPI_COMM_WORLD);
     simulator_finish();
     MPI_Finalize();
-exit(0);
+    exit(0);
   }
   glutPostRedisplay();  //再描画
   MPI_Barrier(MPI_COMM_WORLD);

@@ -38,7 +38,7 @@ static void mpiSplit(void);
  double field_toCellUnit(const double phisycalUnit){
   return phisycalUnit/fieldInfo.h_u_nm;   //セル単位に変換 
 }
- double field_toPhisycalUnit(const double cellUnit){
+ double field_toPhysicalUnit(const double cellUnit){
   return cellUnit*fieldInfo.h_u_nm;    //物理単位(nm)に変換
 }
 
@@ -69,6 +69,17 @@ double field_getTheta(){  return waveInfo_s.Theta_deg;}
 double field_getPhi(){  return waveInfo_s.Phi_deg;}
 double  field_getTime(){  return time;}
 double  field_getMaxTime(){  return maxTime;}
+
+//波長の変更
+void field_setLambda(double lambda_nm)
+{
+  //入射波パラメータの計算
+  fieldInfo.lambda_nm = lambda_nm;
+  waveInfo_s.Lambda_s  = field_toCellUnit(fieldInfo.lambda_nm);
+  waveInfo_s.T_s       = waveInfo_s.Lambda_s/C_0_S;
+  waveInfo_s.K_s       = 2*M_PI/waveInfo_s.Lambda_s;
+  waveInfo_s.Omega_s   = C_0_S*waveInfo_s.K_s;
+}
 
 int field_index(int i, int j, int k){
     return i*fieldInfo_s.N_PYZ + j*fieldInfo_s.N_PZ+k;
@@ -113,14 +124,10 @@ int field_subFront(int ind){
 int field_subBack(int ind){
   return ind-1;
 }
-int field_subToOneX(int i){
-  return i-1+subFieldInfo_s.OFFSET_X;
-}
-int field_subToOneY(int j){
-  return j-1+subFieldInfo_s.OFFSET_Y;
-}
-int field_subToOneZ(int k){
-  return k-1+subFieldInfo_s.OFFSET_Z;
+
+void field_reset()
+{
+  time = 0;
 }
 
 void field_init(FieldInfo field_info)
@@ -229,37 +236,6 @@ double field_pmlCoef2(double ep_mu, double sig)
  double complex field_pointLight(void)
 {
   return ray_coef * (cos(waveInfo_s.Omega_s*time) + sin(waveInfo_s.Omega_s*time)*I);
-}
-
-//ガウシアンパルス
-// gapX, gapY : Ex-z, Hx-zは格子点からずれた位置に配置され散る為,格子点からのずれを送る必要がある.
-// 分割領域では使えない->gapをさらに領域のオフセットだけずらせば使えそう
-// UPML専用
-void field_scatteredPulse(dcomplex *p, double *eps, double gapX, double gapY, double gapZ)
-{
-/*
-  double time = field_getTime();
-  double w_s  = field_getOmega();
-  double rad = field_getWaveAngle()*M_PI/180.0;	//ラジアン変換  
-
-  double cos_per_c = cos(rad)/C_0_S, sin_per_c = sin(rad)/C_0_S;
-  const double beam_width = 50; //パルスの幅
-
-  FieldInfo_S fInfo_s = field_getFieldInfo_S();
-  
-  //waveAngleにより, t0の値を変えないとちょうどいいところにピークが来なため,それを計算.
-  const double center_peak = (fInfo_s.N_PX/2.0+gapX)*cos_per_c+(fInfo_s.N_PY/2+gapY)*sin_per_c; //中心にピークがくる時間
-  const double t0 = -center_peak + 100; //常に100ステップの時に,領域の中心にピークが来るようにする.
-*/
-  /*
-  for(int i=1; i<fInfo_s.N_PX-1; i++) {
-    for(int j=1; j<fInfo_s.N_PY-1; j++) {
-      int k = field_index(i,j);
-      const double r = (i+gapX)*cos_per_c+(j+gapY)*sin_per_c-(time-t0); // (x*cos+y*sin)/C - (time-t0)
-      const double gaussian_coef = exp( -pow(r/beam_width, 2 ) );
-      p[k] += gaussian_coef*(EPSILON_0_S/eps[k] - 1)*cexp(I*r*w_s);     //p[k] -= かも(岡田さんのメール参照)
-    }
-    }*/
 }
 
 //------------------light method----------------------//

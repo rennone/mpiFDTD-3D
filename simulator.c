@@ -39,6 +39,7 @@ static void setMPI3D()
   updateMethod = mpi_fdtd3D_upml_getUpdate();
   initMethod   = mpi_fdtd3D_upml_getInit();
   finishMethod = mpi_fdtd3D_upml_getFinish();
+  resetMethod  = mpi_fdtd3D_upml_getReset();
   getEpsMethod = mpi_fdtd3D_upml_getEps;
   getDrawData  = mpi_fdtd3D_upml_getData;
 }
@@ -103,5 +104,16 @@ bool simulator_isFinish(void)
 double* simulator_getEps()
 {
   return (*getEpsMethod)();
+}
+
+void simulator_reset()
+{
+  printf("finish\n");
+  gettimeofday(&timer2,NULL);
+  printf("time = %lf \n", timer2.tv_sec-timer1.tv_sec+(timer2.tv_usec-timer1.tv_usec)*1e-6);
+
+  (*resetMethod)();
+  field_reset();
+  gettimeofday(&timer1, NULL);
 }
   

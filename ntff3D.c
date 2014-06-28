@@ -183,6 +183,7 @@ void ntff3D_Frequency( dcomplex *Ex, dcomplex *Ey,dcomplex *Ez,
                        dcomplex *Hx, dcomplex *Hy, dcomplex *Hz)
 {
   dcomplex Eth, Eph;
+  /*
   //YZ平面の遠方解を出力
   {
     FILE *fpEth_yz = openFile("Eth_yz.txt");
@@ -193,6 +194,8 @@ void ntff3D_Frequency( dcomplex *Ex, dcomplex *Ey,dcomplex *Ez,
       fprintf(fpEth_yz, "%.18lf %.18lf\n", creal(Eth), cimag(Eth));
       fprintf(fpEph_yz, "%.18lf %.18lf\n", creal(Eph), cimag(Eph));
     }
+    fclose(fpEth_yz);
+    fclose(fpEph_yz);
   }
   
   //XZ平面の遠方解を出力
@@ -205,18 +208,28 @@ void ntff3D_Frequency( dcomplex *Ex, dcomplex *Ey,dcomplex *Ez,
       fprintf(fpEth_xz, "%.18lf %.18lf\n", creal(Eth), cimag(Eth));
       fprintf(fpEph_xz, "%.18lf %.18lf\n", creal(Eph), cimag(Eph));
     }
+    fclose(fpEth_xz);
+    fclose(fpEph_xz);
   }
-  
+
+  */
+    
   //XY平面の遠方解を出力
   {
-    FILE *fpEth_zy = openFile("Eth_xy.txt");
-    FILE *fpEph_zy = openFile("Eph_xy.txt");
+    FieldInfo fInfo = field_getFieldInfo();
+    char buf[512];
+    sprintf(buf, "%d_nm_Eth.txt", fInfo.lambda_nm);
+    FILE *fpEth_zy = openFile(buf);
+    sprintf(buf, "%d_nm_Eph.txt", fInfo.lambda_nm);
+    FILE *fpEph_zy = openFile(buf);
     for(int theta=90, phi=0; phi<360; phi++)
     {
       frequencyNTFF(Ex, Ey, Ez, Hx, Hy, Hz, &Eth, &Eph, theta, phi);
       fprintf(fpEth_zy, "%.18lf %.18lf\n", creal(Eth), cimag(Eth));
       fprintf(fpEph_zy, "%.18lf %.18lf\n", creal(Eph), cimag(Eph));
     }
+    fclose(fpEth_zy);
+    fclose(fpEph_zy);
   }
 }
 

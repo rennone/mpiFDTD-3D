@@ -206,6 +206,8 @@ static void finish(){
 
 static void reset()
 {
+  output();
+  initializeElectroMagneticField();
 }
 
 //Update

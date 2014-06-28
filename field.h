@@ -106,9 +106,6 @@ extern int field_subToOneZ(int z);
 //フィールドの横,縦の大きさ, 1セルのサイズ, pmlレイヤの数, 波長(nm), 計算ステップ
 //フィールドの横,縦の大きさ, 1セルのサイズ, pmlレイヤの数, 波長(nm), 計算ステップ
 extern void field_init(FieldInfo field_info);
-extern void field_reset(void);
-
-extern void setField(const int wid, const int hei, const int dep, const double h, const int pml, const double lambda, const double step);
 
 //pml用のσを取ってくる
 extern double field_sigmaX(double x, double y, double z);
@@ -118,7 +115,7 @@ extern double field_pmlCoef(double x, double y);
 extern double field_pmlCoef2(double x, double y);
 
 extern double field_toCellUnit(const double);
-extern double field_toPhisycalUnit(const double);
+extern double field_toPhysicalUnit(const double);
 
 
 //---------------入射波---------------
@@ -130,6 +127,9 @@ extern void field_scatteredPulse(dcomplex *p, double *eps, double gapX, double g
 
 extern void field_nextStep(void);
 extern bool field_isFinish(void);
+extern void field_reset(void);
+//波長を変更
+extern void field_setLambda(double lambda_nm);
 
 //:getter
 extern double field_getK(void);
@@ -141,11 +141,11 @@ extern double field_getTime(void);
 extern double field_getMaxTime(void);
 extern double field_getTheta(void);
 extern double field_getPhi(void);
-
+/*
 extern int field_getOffsetX();
 extern int field_getOffsetY();
 extern int field_getOffsetZ();
-
+*/
 extern int field_getSubNx();
 extern int field_getSubNy();
 extern int field_getSubNz();
