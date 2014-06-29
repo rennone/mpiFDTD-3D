@@ -57,9 +57,9 @@ void move(enum MODEL modelType)
 int main( int argc, char *argv[] )
 {
   FieldInfo fInfo;
-  fInfo.width_nm  = 1000;
-  fInfo.height_nm = 2000;
-  fInfo.depth_nm  = 1000;
+  fInfo.width_nm  = 1200;
+  fInfo.height_nm = 2200;
+  fInfo.depth_nm  = 1200;
   fInfo.h_u_nm    = 10;
   fInfo.pml       = 10;
   fInfo.lambda_nm = start_lambda_nm;
