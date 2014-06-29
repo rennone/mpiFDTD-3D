@@ -218,18 +218,23 @@ void ntff3D_Frequency( dcomplex *Ex, dcomplex *Ey,dcomplex *Ez,
   {
     FieldInfo fInfo = field_getFieldInfo();
     char buf[512];
-    sprintf(buf, "%d_nm_Eth.txt", fInfo.lambda_nm);
-    FILE *fpEth_zy = openFile(buf);
-    sprintf(buf, "%d_nm_Eph.txt", fInfo.lambda_nm);
-    FILE *fpEph_zy = openFile(buf);
-    for(int theta=90, phi=0; phi<360; phi++)
+    sprintf(buf, "%dnm_Eth_str.txt", fInfo.lambda_nm);
+    FILE *fpEth = openFile(buf);
+    sprintf(buf, "%dnm_Eph_str.txt", fInfo.lambda_nm);
+    FILE *fpEph = openFile(buf);
+    for(int theta=0; theta<360; theta++)
     {
-      frequencyNTFF(Ex, Ey, Ez, Hx, Hy, Hz, &Eth, &Eph, theta, phi);
-      fprintf(fpEth_zy, "%.18lf %.18lf\n", creal(Eth), cimag(Eth));
-      fprintf(fpEph_zy, "%.18lf %.18lf\n", creal(Eph), cimag(Eph));
+      for(int phi=0; phi<360; phi++)
+      {
+        frequencyNTFF(Ex, Ey, Ez, Hx, Hy, Hz, &Eth, &Eph, theta, phi);
+        fprintf(fpEth, "%.20lf ", cnorm(Eth));
+        fprintf(fpEph, "%.20lf ", cnorm(Eph));
+      }
+      fprintf(fpEth, "\n");
+      fprintf(fpEph, "\n");
     }
-    fclose(fpEth_zy);
-    fclose(fpEph_zy);
+    fclose(fpEth);
+    fclose(fpEph);
   }
 }
 
