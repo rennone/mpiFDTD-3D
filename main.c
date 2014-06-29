@@ -60,7 +60,7 @@ int main( int argc, char *argv[] )
   fInfo.width_nm  = 1000;
   fInfo.height_nm = 2000;
   fInfo.depth_nm  = 1000;
-  fInfo.h_u_nm    = 5;
+  fInfo.h_u_nm    = 10;
   fInfo.pml       = 10;
   fInfo.lambda_nm = start_lambda_nm;
   fInfo.stepNum   = 1500;
