@@ -23,4 +23,6 @@ extern void simulator_changeModelAndRestart(void);
 extern double complex* simulator_getDrawingData();
 extern double *simulator_getEps();
 
+//fieldの初期化(サイズの変更とか)
+extern void simulator_resetField(FieldInfo field_info);
 #endif

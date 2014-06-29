@@ -128,6 +128,7 @@ int field_subBack(int ind){
 void field_reset()
 {
   time = 0;
+  ray_coef = 1.0*(1.0 - exp(-0.0001*time*time));
 }
 
 void field_init(FieldInfo field_info)
@@ -307,11 +308,9 @@ static void mpiSplit(void)
   MPI_Type_commit(&MPI_DCOMPLEX_XZ_PLANE);
 
   //XY平面は連続する領域が無い(隙間が2種類ある)ので, のりしろも含めた全領域を同期する必要がある.
-  MPI_Type_vector(subFieldInfo_s.SUB_N_PX*subFieldInfo_s.SUB_N_PY, 1, subFieldInfo_s.SUB_N_PZ, MPI_C_DOUBLE_COMPLEX, &MPI_DCOMPLEX_XY_PLANE);
+  MPI_Type_vector(subFieldInfo_s.SUB_N_PX*subFieldInfo_s.SUB_N_PY, 1,
+                  subFieldInfo_s.SUB_N_PZ, MPI_C_DOUBLE_COMPLEX, &MPI_DCOMPLEX_XY_PLANE);
   MPI_Type_commit(&MPI_DCOMPLEX_XY_PLANE);
-  
-  printf("field.c rank=%d, offset(%d, %d, %d)\n", subFieldInfo_s.Rank, subFieldInfo_s.OFFSET_X, subFieldInfo_s.OFFSET_Y, subFieldInfo_s.OFFSET_Z);
-
 }
 
 //plane => 0 : XY平面(z=dep/2)
@@ -325,8 +324,7 @@ void field_outputElliptic(const char *fileName, dcomplex* data, int plane)
   FieldInfo_S fInfo_s = field_getFieldInfo_S();
   WaveInfo_S wInfo_s = field_getWaveInfo_S();
 
-
-  double r = 1.2*field_toCellUnit(100);
+  double r = 1.2*field_toCellUnit(150);
   double ToRad = M_PI/180.0;
 
   int ox = fInfo_s.N_PX/2;

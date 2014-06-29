@@ -72,7 +72,7 @@ void simulator_init(FieldInfo field_info, enum MODEL model, enum SOLVER solver){
   field_init(field_info);
 
   /*NO_MODEL. MIE_CYLINDER, SHELF(todo), NONSHELF(todo) */
-  setModel(model);     //次にこれ,モデル(散乱体)を定義
+  models_setModel(model);     //次にこれ,モデル(散乱体)を定義
 
   setSolver(solver);      //Solverの設定
 
@@ -96,11 +96,6 @@ double complex* simulator_getDrawingData(void){
   return (* getDrawData)();
 }
 
-bool simulator_isFinish(void)
-{
-  return field_isFinish();
-}
-
 double* simulator_getEps()
 {
   return (*getEpsMethod)();
@@ -116,4 +111,24 @@ void simulator_reset()
   field_reset();
   gettimeofday(&timer1, NULL);
 }
-  
+
+void simulator_changeStructure()
+{
+  (*finishMethod)(); //メモリの解放等
+  (*initMethod)();   //Solverの初期化, EPS, Coeffの設定
+  gettimeofday(&timer1, NULL); 
+}
+
+bool simulator_isFinish(void)
+{  
+  return field_isFinish();
+}
+
+void simulator_resetField(FieldInfo field_info)
+{
+  //横幅(nm), 縦幅(nm), 1セルのサイズ(nm), pmlレイヤの数, 波長(nm), 計算ステップ
+  field_init(field_info);
+  (*initMethod)();      //Solverの初期化, EPS, Coeffの再設定
+
+  gettimeofday(&timer1, NULL); 
+}

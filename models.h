@@ -19,7 +19,9 @@ enum MODE{
   D_XYZ, //xy面積分 
 };
 
-extern void setModel(enum MODEL model);
+extern void models_setModel(enum MODEL model);
 extern double models_eps(double x, double y, double z, enum MODE mode);
-
+extern bool models_isFinish();
+extern void models_needSize(int *x_nm, int *y_nm,int *z_nm);
+extern void models_moveDirectory(void);
 #endif

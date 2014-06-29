@@ -9,6 +9,8 @@ static double posx;
 static double posy;
 static double posz;
 
+static double start_radius = 100;
+static double end_radius = 200;
 
 static double eps(double, double, double, int, int, int);
 
@@ -19,8 +21,7 @@ double (*circleModel_EPS())(double, double, double, int , int, int)
   posy = fInfo_s.N_PY/2;
   posz = fInfo_s.N_PZ/2;
 
-  WaveInfo_S wInfo_s = field_getWaveInfo_S();
-  radius = field_toCellUnit(100);//wInfo_s.Lambda_s;
+  radius = field_toCellUnit(start_radius);
 
   double n = 1.6;
   epsilon = n*n*EPSILON_0_S;
@@ -68,4 +69,20 @@ static double eps(double x, double y, double z, int col, int row, int dep)
   
   sum /= split*split*split;
   return epsilon*sum + EPSILON_0_S*(1-sum);
+}
+
+bool circleModel_isFinish()
+{
+  //50nm増やす
+  radius += field_toCellUnit(50);
+  
+  return radius > field_toCellUnit(end_radius);
+}
+
+void circleModel_moveDirectory(void)
+{
+  char buf[512];
+  sprintf(buf, "%d_nm", (int)field_toPhysicalUnit(radius));
+  makeDirectory(buf);
+  moveDirectory(buf); 
 }

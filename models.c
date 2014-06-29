@@ -6,9 +6,11 @@
 //#include "shelf.h"
 //#include "nonshelf.h"
 
+static bool (*isFinishMethod)(void);
+static bool (*moveDirectoryMethod)(void);
 
 static double (*epsMethod)(double, double, double, int, int, int);
-
+static void (*needSizeMethod)(int*, int*, int*);
 static void noModel(void)
 {
   //no material
@@ -19,14 +21,19 @@ static void circleModel(void)
 {
   //cylinder material whitch radius = lambda, origin = center of field
   epsMethod = circleModel_EPS();
+  isFinishMethod = circleModel_isFinish;
+  moveDirectoryMethod = circleModel_moveDirectory;
 }
 
 static void multilayerModel()
 {
-  epsMethod = multilayerModel_EPS();
+  epsMethod      = multilayerModel_EPS();
+  isFinishMethod = multilayerModel_isFinish;
+  needSizeMethod = multilayerModel_needSize;
+  moveDirectoryMethod = multilayerModel_moveDirectory;
 }
 
-void setModel(enum MODEL model)
+void models_setModel(enum MODEL model)
 {
   switch(model){
   case NO_MODEL:
@@ -63,4 +70,20 @@ double models_eps(double x, double y, double z, enum MODE mode){
   }
   
   return epsilon;
+}
+
+bool models_isFinish()
+{
+  return (*isFinishMethod)();
+}
+
+//必要な計算領域のサイズをとってくる
+void models_needSize(int *x_nm, int *y_nm,int *z_nm)
+{
+  needSizeMethod(x_nm, y_nm, z_nm);
+}
+
+void models_moveDirectory(void)
+{
+  (*moveDirectoryMethod)();
 }

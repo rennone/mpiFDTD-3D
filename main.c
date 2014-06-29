@@ -4,6 +4,9 @@
 #include "myComplex.h"
 #include "simulator.h"
 #include "field.h"
+#include "multilayerModel.h"
+#include "models.h"
+#include "function.h"
 // 以下 OPEN_GLの関数
 #ifdef USE_OPENGL
 
@@ -31,44 +34,84 @@ static void idle(void);
 
 #endif
 
-int rank;
-int numProc;
+static int rank;
+static int numProc;
+
+static int start_lambda_nm = 500;
+static int end_lambda_nm   = 500;
+void move(enum MODEL modelType)
+{
+  switch(modelType)
+  {
+  case LAYER:
+    makeDirectory("Multilayer");
+    moveDirectory("Multilayer");
+    break;
+  case MIE_SPHERE:
+    makeDirectory("Mie");
+    moveDirectory("Mie");
+    break;
+  }
+}
 
 int main( int argc, char *argv[] )
 {
   FieldInfo fInfo;
-  fInfo.width_nm  = 600;
-  fInfo.height_nm = 2000;
-  fInfo.depth_nm  = 600;
+  fInfo.width_nm  = 500;
+  fInfo.height_nm = 500;
+  fInfo.depth_nm  = 500;
   fInfo.h_u_nm    = 5;
   fInfo.pml       = 10;
-  fInfo.lambda_nm = 380;
+  fInfo.lambda_nm = start_lambda_nm;
   fInfo.stepNum   = 1500;
   fInfo.theta_deg =  0;
   fInfo.phi_deg   = 90;
   enum MODEL modelType   = MIE_SPHERE;//NO_MODEL;LAYER;//
   enum SOLVER solberType = MPI_FDTD_3D;
-  MPI_Init( 0, 0 );
+  move(modelType);
+  MPI_Init( 0, 0 );  
   simulator_init(fInfo, modelType, solberType);
 
-  
-  
 #ifndef USE_OPENGL    //only calculate mode
-  int lambda_nm = field_toPhysicalUnit(field_getLambda());
-  while(lambda_nm < 650)
+  while(1)
   {
-    while(!simulator_isFinish())
+    models_moveDirectory();
+    int lambda_nm = field_toPhysicalUnit(field_getLambda());
+    while(lambda_nm <= end_lambda_nm)
     {
-       simulator_calc();       
-       //   MPI_Barrier(MPI_COMM_WORLD);
+      while(!simulator_isFinish())
+      {
+        simulator_calc();
+      }
+      MPI_Barrier(MPI_COMM_WORLD);
+      lambda_nm += 10;
+      
+      if(lambda_nm > end_lambda_nm)
+        break;
+      
+      simulator_reset();
+      field_setLambda(lambda_nm);
+      SubFieldInfo_S sInfo_s = field_getSubFieldInfo_S();
+      if(sInfo_s.Rank == 0)
+        printf("next Simulation. lambda = %d\n", lambda_nm);
     }
+    simulator_finish(); //構造を変えるのでシミュレーションを終わらせる.
+    moveDirectory("../");
+    //構造が終了か調べる
+    if(models_isFinish())
+      break;
+
+    // 10nm * 2 * 8レイヤ増える todo ハードコーディングはやめる
+    fInfo.height_nm += 160;
+    //lambdaも元に戻してる.
+    simulator_resetField(fInfo);
+    SubFieldInfo_S sInfo_s = field_getSubFieldInfo_S();
+    if(sInfo_s.Rank == 0)
+      printf("next Simulation. lambda = %d, size(%d, %d, %d)\n",
+           lambda_nm, fInfo.width_nm, fInfo.height_nm, fInfo.depth_nm);    
     MPI_Barrier(MPI_COMM_WORLD);
-    simulator_reset();
-    lambda_nm += 10;
-    field_setLambda(lambda_nm);
-    printf("next Simulation. lambda = %d\n", lambda_nm);
-  }
-  simulator_finish();
+  } 
+  
   MPI_Finalize();
 #endif
 

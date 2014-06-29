@@ -739,13 +739,14 @@ static void output()
   SubFieldInfo_S subInfo_s = field_getSubFieldInfo_S();
   if(subInfo_s.Rank == 0)
   {
+    /*
     field_outputAllDataComplex("Ex.txt", entireEx);
     field_outputAllDataComplex("Ey.txt", entireEy);    
     field_outputAllDataComplex("Ez.txt", entireEz);
     field_outputAllDataComplex("Hx.txt", entireHx);
     field_outputAllDataComplex("Hy.txt", entireHy);
     field_outputAllDataComplex("Hz.txt", entireHz);
-    
+    */
     field_outputElliptic("Ex_xy.txt", entireEx, 0);
     field_outputElliptic("Ex_zy.txt", entireEx, 1);
     field_outputElliptic("Ex_xz.txt", entireEx, 2);    
@@ -755,8 +756,8 @@ static void output()
     field_outputElliptic("Ez_xy.txt", entireEz, 0);
     field_outputElliptic("Ez_zy.txt", entireEz, 1);
     field_outputElliptic("Ez_xz.txt", entireEz, 2);    
-  
-    ntff3D_Frequency(entireEx,entireEy,entireEz,entireHx,entireHy,entireHz);
+    
+//    ntff3D_Frequency(entireEx,entireEy,entireEz,entireHx,entireHy,entireHz);
     free(entireEx);
     free(entireEy);
     free(entireEz);

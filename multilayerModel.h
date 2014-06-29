@@ -6,6 +6,7 @@
 #include <stdlib.h>
 extern double ( *multilayerModel_EPS(void))(double x, double y, double z, int, int, int);
 extern bool multilayerModel_isFinish(void);
-//extern void (*multiLayerModel_output(void))(FILE *, double complex*);
-
+extern void multilayerModel_setThickness(int thickness1_nm, int thickness2_nm);
+extern void multilayerModel_needSize(int *x_nm, int *y_nm,int *z_nm);
+extern void multilayerModel_moveDirectory();
 #endif
