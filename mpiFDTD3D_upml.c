@@ -741,6 +741,7 @@ static void output()
   {
     char buf[512];
     int lambda_nm = field_toPhysicalUnit(field_getLambda_S());
+    /*
     sprintf(buf, "%dnm_Ex.txt", lambda_nm);
     field_outputAllDataComplex("Ex.txt", entireEx);
     field_outputAllDataComplex("Ey.txt", entireEy);    
@@ -748,7 +749,7 @@ static void output()
     field_outputAllDataComplex("Hx.txt", entireHx);
     field_outputAllDataComplex("Hy.txt", entireHy);
     field_outputAllDataComplex("Hz.txt", entireHz);
-    
+    */
     /*
     field_outputElliptic("Ex_xy.txt", entireEx, 0);
     field_outputElliptic("Ex_zy.txt", entireEx, 1);
