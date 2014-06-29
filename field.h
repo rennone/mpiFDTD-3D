@@ -132,10 +132,10 @@ extern void field_reset(void);
 extern void field_setLambda(double lambda_nm);
 
 //:getter
-extern double field_getK(void);
+extern double field_getK_S(void);
 extern double field_getRayCoef(void);
-extern double field_getOmega(void);
-extern double field_getLambda(void);
+extern double field_getOmega_S(void);
+extern double field_getLambda_S(void);
 extern double field_getWaveAngle(void);
 extern double field_getTime(void);
 extern double field_getMaxTime(void);

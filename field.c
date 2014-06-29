@@ -61,10 +61,10 @@ FieldInfo field_getFieldInfo()   { return fieldInfo;}
 NTFFInfo  field_getNTFFInfo(){  return ntff_info;}
 
 double field_getZ_0_S(){ return Z_0_S;}
-double  field_getK(){  return waveInfo_s.K_s;}
+double  field_getK_S(){  return waveInfo_s.K_s;}
 double  field_getRayCoef(){  return ray_coef;}
-double  field_getOmega(){  return waveInfo_s.Omega_s;}
-double  field_getLambda(){  return waveInfo_s.Lambda_s;}
+double  field_getOmega_S(){  return waveInfo_s.Omega_s;}
+double  field_getLambda_S(){  return waveInfo_s.Lambda_s;}
 double field_getTheta(){  return waveInfo_s.Theta_deg;}
 double field_getPhi(){  return waveInfo_s.Phi_deg;}
 double  field_getTime(){  return time;}

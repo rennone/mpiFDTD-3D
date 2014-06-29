@@ -246,14 +246,14 @@ static void pointLightInCenter(dcomplex *p)
 // UPML専用
 static void scatteredWave(dcomplex *p, double *eps, double gapX, double gapY, double gapZ){
   double ray_coef = field_getRayCoef();  
-  double k_s = field_getK();
+  double k_s = field_getK_S();
   double theta_rad = field_getTheta()*M_PI/180.0;
   double phi_rad   = field_getPhi()*M_PI/180.0;
 
   double ks_sin_cos = sin(theta_rad)*cos(phi_rad)*k_s;
   double ks_sin_sin = sin(theta_rad)*sin(phi_rad)*k_s;
   double ks_cos     = cos(theta_rad)*k_s;
-  double w_s_time = field_getOmega() * field_getTime();
+  double w_s_time = field_getOmega_S() * field_getTime();
   
   SubFieldInfo_S subInfo_s = field_getSubFieldInfo_S();
   int nextX   = 2*subInfo_s.SUB_N_PZ; //最後ののりしろの分１行多くずれる
@@ -276,7 +276,7 @@ static void scatteredWave(dcomplex *p, double *eps, double gapX, double gapY, do
         double y = j+offsetY;
         double z = k+offsetZ;
 
-        double kr = x*ks_sin_cos + y*ks_sin_cos + z*ks_cos;
+        double kr = x*ks_sin_cos + y*ks_sin_sin + z*ks_cos;
         //p[k] -= かも(岡田さんのメール参照)
         p[w] += (ray_coef_EPS_0/eps[w] - ray_coef)*cexp( I*(kr-w_s_time) );
 //        p[w] += ray_coef*(EPSILON_0_S/eps[w] - 1.0)*cexp( I*(kr-w_s_time) );
@@ -303,7 +303,7 @@ static void scatteredPulse(dcomplex *p, double *eps, double gapX, double gapY, d
   int offsetY = subInfo_s.OFFSET_Y + gapY;
   int offsetZ = subInfo_s.OFFSET_Z + gapZ;
   
-  double w_s  = field_getOmega();
+  double w_s  = field_getOmega_S();
   const double beam_width = 50; //パルスの幅
   FieldInfo_S fInfo_s = field_getFieldInfo_S();
   
@@ -739,14 +739,17 @@ static void output()
   SubFieldInfo_S subInfo_s = field_getSubFieldInfo_S();
   if(subInfo_s.Rank == 0)
   {
-    /*
+    char buf[512];
+    int lambda_nm = field_toPhysicalUnit(field_getLambda_S());
+    sprintf(buf, "%dnm_Ex.txt", lambda_nm);
     field_outputAllDataComplex("Ex.txt", entireEx);
     field_outputAllDataComplex("Ey.txt", entireEy);    
     field_outputAllDataComplex("Ez.txt", entireEz);
     field_outputAllDataComplex("Hx.txt", entireHx);
     field_outputAllDataComplex("Hy.txt", entireHy);
     field_outputAllDataComplex("Hz.txt", entireHz);
-    */
+    
+    /*
     field_outputElliptic("Ex_xy.txt", entireEx, 0);
     field_outputElliptic("Ex_zy.txt", entireEx, 1);
     field_outputElliptic("Ex_xz.txt", entireEx, 2);    
@@ -756,8 +759,8 @@ static void output()
     field_outputElliptic("Ez_xy.txt", entireEz, 0);
     field_outputElliptic("Ez_zy.txt", entireEz, 1);
     field_outputElliptic("Ez_xz.txt", entireEz, 2);    
-    
-//    ntff3D_Frequency(entireEx,entireEy,entireEz,entireHx,entireHy,entireHz);
+    */
+    ntff3D_Frequency(entireEx,entireEy,entireEz,entireHx,entireHy,entireHz);
     free(entireEx);
     free(entireEy);
     free(entireEz);

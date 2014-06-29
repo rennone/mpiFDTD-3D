@@ -57,16 +57,16 @@ void move(enum MODEL modelType)
 int main( int argc, char *argv[] )
 {
   FieldInfo fInfo;
-  fInfo.width_nm  = 500;
-  fInfo.height_nm = 500;
-  fInfo.depth_nm  = 500;
+  fInfo.width_nm  = 1000;
+  fInfo.height_nm = 2000;
+  fInfo.depth_nm  = 1000;
   fInfo.h_u_nm    = 5;
   fInfo.pml       = 10;
   fInfo.lambda_nm = start_lambda_nm;
   fInfo.stepNum   = 1500;
-  fInfo.theta_deg =  0;
+  fInfo.theta_deg = 90;
   fInfo.phi_deg   = 90;
-  enum MODEL modelType   = MIE_SPHERE;//NO_MODEL;LAYER;//
+  enum MODEL modelType   = LAYER;//MIE_SPHERE;//NO_MODEL;
   enum SOLVER solberType = MPI_FDTD_3D;
   move(modelType);
   MPI_Init( 0, 0 );  
@@ -76,7 +76,7 @@ int main( int argc, char *argv[] )
   while(1)
   {
     models_moveDirectory();
-    int lambda_nm = field_toPhysicalUnit(field_getLambda());
+    int lambda_nm = field_toPhysicalUnit(field_getLambda_S());
     while(lambda_nm <= end_lambda_nm)
     {
       while(!simulator_isFinish())
@@ -100,7 +100,6 @@ int main( int argc, char *argv[] )
     //構造が終了か調べる
     if(models_isFinish())
       break;
-
     // 10nm * 2 * 8レイヤ増える todo ハードコーディングはやめる
     fInfo.height_nm += 160;
     //lambdaも元に戻してる.

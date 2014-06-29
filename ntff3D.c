@@ -19,7 +19,7 @@ void ntff3D_Init()
   Wy = newDComplex(nInfo.arraySize * 360);
   Wz = newDComplex(nInfo.arraySize * 360);
 
-  R = 1.0e6 * field_getLambda();  
+  R = 1.0e6 * field_getLambda_S();  
 }
 
 // 係数と最低限必要なインデックスをまとめて求める為のマクロ
@@ -70,7 +70,7 @@ static void frequencyNTFF(dcomplex *Ex, dcomplex *Ey,dcomplex *Ez,
                           dcomplex *Hx, dcomplex *Hy, dcomplex *Hz,
                           dcomplex *Eth, dcomplex *Eph, int theta, int phi)
 {
-  double k_s = field_getK();
+  double k_s = field_getK_S();
   dcomplex Coeffician = I * k_s / (4*M_PI*R) * cexp(-I*k_s*R); //
   NTFFInfo nInfo = field_getNTFFInfo();
   double cx = nInfo.cx;  double cy = nInfo.cy;  double cz = nInfo.cz;
@@ -473,8 +473,6 @@ static void ntff3D_TimeTranslate(dcomplex *Ux_ang, dcomplex *Uy_ang, dcomplex *U
                                  dcomplex *Eth, dcomplex *Eph,
                                  int theta, int phi)
 {
-  const double w_s = field_getOmega();
-
   const double complex coef = 1.0/(4*M_PI*C_0_S*R);
   const int maxTime = field_getMaxTime();
 
