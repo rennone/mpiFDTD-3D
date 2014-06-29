@@ -86,7 +86,6 @@ double ( *multilayerModel_EPS(void))(double, double, double, int, int, int)
   width_s[1]     = field_toCellUnit(300);
   depth_s[0]     = field_toCellUnit(300);
   depth_s[1]     = field_toCellUnit(300);
-  
   thickness_s[0] = field_toCellUnit(start_thickness_nm);
   thickness_s[1] = field_toCellUnit(start_thickness_nm);
   layerNum = 8;
@@ -128,7 +127,6 @@ void multilayerModel_moveDirectory()
 {
   char buf[512];
 
-  printf("%d\n", thickness_s[0]);
   sprintf(buf, "%d_nm",(int)field_toPhysicalUnit(thickness_s[0]));
   makeDirectory(buf);
   moveDirectory(buf);

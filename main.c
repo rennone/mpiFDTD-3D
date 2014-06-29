@@ -37,8 +37,8 @@ static void idle(void);
 static int rank;
 static int numProc;
 
-static int start_lambda_nm = 500;
-static int end_lambda_nm   = 500;
+static int start_lambda_nm = 380;
+static int end_lambda_nm   = 640;
 void move(enum MODEL modelType)
 {
   switch(modelType)
