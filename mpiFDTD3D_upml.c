@@ -81,6 +81,8 @@ static void freeMemories(void);
 static void debugOutput(void);
 #endif
 
+static void Connection_ISendIRecvE(void);
+static void Connection_ISendIRecvH(void);
 static void Connection_SendRecvE(void);
 static void Connection_SendRecvH(void);
 static void scatteredWave(dcomplex *p, double *eps, double gapX, double gapY, double gapZ);
@@ -200,7 +202,7 @@ static void init(){
 
 static void finish(){
   output();
-//  ntff3D_TimeOutput();  
+//  ntff3D_TimeOutput();
   freeMemories();
 }
 
@@ -324,6 +326,68 @@ static void scatteredPulse(dcomplex *p, double *eps, double gapX, double gapY, d
         p[w] += gaussian_coef*(EPSILON_0_S/eps[w] - 1)*cexp(I*r*w_s);     //p[k] -= かも(岡田さんのメール参照)
       }
 }
+
+static void Connection_ISendIRecvE(void)
+{
+  // (Hの計算に)必要な物は
+  // Ey,Ezのleft. Ex,Ezのbottm. Ex,Eyのbackなので
+  // left, bottom, back を受け取り
+  // right , top, frontを送る
+  MPI_Request req1,req2,req3,req4,req5,req6;
+  SubFieldInfo_S subInfo_s = field_getSubFieldInfo_S();
+  
+  //左右のランクとの同期
+  int ltRecv = field_subIndex(0, 1, 1);                    //最左に格納する
+  int rtSend = field_subIndex(subInfo_s.SUB_N_PX-2, 1, 1); //最右の一つ左を送る
+  MPI_Isend(&Ez[rtSend], 1, MPI_DCOMPLEX_YZ_PLANE, subInfo_s.RtRank, 1, MPI_COMM_WORLD, &req1);
+  MPI_Irecv(&Ez[ltRecv], 1, MPI_DCOMPLEX_YZ_PLANE, subInfo_s.LtRank, 1, MPI_COMM_WORLD, &req2);
+
+  //上下のランクとの同期
+  int tpSend = field_subIndex(1, subInfo_s.SUB_N_PY-2, 1); //最上の一つ下を送る
+  int bmRecv = field_subIndex(1, 0, 1);                    //最下に格納する
+  MPI_ISend(&Ez[tpSend], 1, MPI_DCOMPLEX_XZ_PLANE, subInfo_s.TpRank, 1, MPI_COMM_WORLD, &req3);
+  MPI_Irecv(&Ez[bmRecv], 1, MPI_DCOMPLEX_XZ_PLANE, subInfo_s.BmRank, 1, MPI_COMM_WORLD, &req4);
+
+  //前後のランクとの同期
+  int frSend = field_subIndex(0, 0, subInfo_s.SUB_N_PZ-2);//field_subIndex(1, 1, subInfo_s.SUB_N_PZ-2);  //最前面の一つ手前を送る(右手系なので手前が大きい)
+  int bkRecv = field_subIndex(0, 0, 0);//field_subIndex(1, 1, 0);                     //最背面に格納する
+  MPI_Isend(&Ex[frSend], 1, MPI_DCOMPLEX_XY_PLANE, subInfo_s.FtRank, 1, MPI_COMM_WORLD, &req5);
+  MPI_Irecv(&Ex[bkRecv], 1, MPI_DCOMPLEX_XY_PLANE, subInfo_s.BkRank, 1, MPI_COMM_WORLD, &req6);
+
+}
+
+static void Connection_ISendIRecvH(void)
+{  
+  // (Eの計算に)必要な物は
+  // Hy,Hzのright. Hx,Hzのtop. Hx,Hyのfrontなので
+  // right, top, front を受け取り
+  // left, bottom, backを送る
+  MPI_Request req1,req2,req3,req4,req5,req6;
+  SubFieldInfo_S subInfo_s = field_getSubFieldInfo_S();
+  
+  //左右のランクとの同期
+  int rtRecv = field_subIndex(subInfo_s.SUB_N_PX-1 , 1, 1); //最右の面に格納する為, xのインデックスはN_PX-1
+  int ltSend = field_subIndex(1, 1, 1);           //最右+1の値を送るため(最右には何も入っていないから), xのインデックスはSUB_N_PX-2
+
+  //Hz と Hyが左右を使う.
+  MPI_Isend(&Hy[ltSend], 1, MPI_DCOMPLEX_YZ_PLANE, subInfo_s.LtRank, 1, MPI_COMM_WORLD, &req1);
+  MPI_Irecv(&Hy[rtRecv], 1, MPI_DCOMPLEX_YZ_PLANE, subInfo_s.RtRank, 1, MPI_COMM_WORLD, &req2);
+
+  //上下のランクとの同期
+  //this needs only Hy[i,j-1] so send to top and recieve from bottom   
+  int tpRecv = field_subIndex(1,subInfo_s.SUB_N_PY-1, 1);
+  int bmSend = field_subIndex(1, 1, 1);
+  MPI_Isend(&Hx[bmSend], 1, MPI_DCOMPLEX_XZ_PLANE, subInfo_s.BmRank, 1, MPI_COMM_WORLD, &req3);
+  MPI_Irecv(&Hx[tpRecv], 1, MPI_DCOMPLEX_XZ_PLANE, subInfo_s.TpRank, 1, MPI_COMM_WORLD, &req4);
+
+  //前後のランクとの同期=>これは, 配列が2段階に隙間があるから.のりしろを含めた平面全部を同期しないと行けない
+  int ftRecv = field_subIndex(0, 0, subInfo_s.SUB_N_PZ-1);
+  int bkSend = field_subIndex(0, 0, 1);
+
+  MPI_Isend(&Hx[bkSend], 1, MPI_DCOMPLEX_XY_PLANE, subInfo_s.BkRank, 1, MPI_COMM_WORLD, &req5);
+  MPI_Irecv(&Hx[ftRecv], 1, MPI_DCOMPLEX_XY_PLANE, subInfo_s.FtRank, 1, MPI_COMM_WORLD, &req6);
+}
+
 
 static void Connection_SendRecvE(void)
 {
@@ -727,7 +791,11 @@ static dcomplex* unifyToRank0(dcomplex *phi)
 //---------------------メモリの解放--------------------//
 
 static void output()
-{  
+{
+  ntff3D_SubFrequency(Ex,Ey,Ez,Hx,Hy,Hz);
+  MPI_Barrier(MPI_COMM_WORLD);
+  return;
+  /*
   dcomplex *entireEx = unifyToRank0(Ex);
   dcomplex *entireEy = unifyToRank0(Ey);
   dcomplex *entireEz = unifyToRank0(Ez);
@@ -740,8 +808,7 @@ static void output()
   if(subInfo_s.Rank == 0)
   {
     char buf[512];
-    int lambda_nm = field_toPhysicalUnit(field_getLambda_S());
-    /*
+    int lambda_nm = field_toPhysicalUnit(field_getLambda_S());    
     sprintf(buf, "%dnm_Ex.txt", lambda_nm);
     field_outputAllDataComplex("Ex.txt", entireEx);
     field_outputAllDataComplex("Ey.txt", entireEy);    
@@ -749,8 +816,7 @@ static void output()
     field_outputAllDataComplex("Hx.txt", entireHx);
     field_outputAllDataComplex("Hy.txt", entireHy);
     field_outputAllDataComplex("Hz.txt", entireHz);
-    */
-    /*
+    
     field_outputElliptic("Ex_xy.txt", entireEx, 0);
     field_outputElliptic("Ex_zy.txt", entireEx, 1);
     field_outputElliptic("Ex_xz.txt", entireEx, 2);    
@@ -760,7 +826,7 @@ static void output()
     field_outputElliptic("Ez_xy.txt", entireEz, 0);
     field_outputElliptic("Ez_zy.txt", entireEz, 1);
     field_outputElliptic("Ez_xz.txt", entireEz, 2);    
-    */
+    
     ntff3D_Frequency(entireEx,entireEy,entireEz,entireHx,entireHy,entireHz);
     free(entireEx);
     free(entireEy);
@@ -768,7 +834,8 @@ static void output()
     free(entireHx);
     free(entireHy);
     free(entireHz);
-  }  
+  }
+*/
   //勝手にfreeしないように吐き出しが終わるまでは,待つ.
   MPI_Barrier(MPI_COMM_WORLD);
 }

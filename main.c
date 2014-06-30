@@ -37,8 +37,8 @@ static void idle(void);
 static int rank;
 static int numProc;
 
-static int start_lambda_nm = 380;
-static int end_lambda_nm   = 640;
+static int start_lambda_nm = 500;
+static int end_lambda_nm   = 500;
 void move(enum MODEL modelType)
 {
   switch(modelType)
@@ -57,16 +57,16 @@ void move(enum MODEL modelType)
 int main( int argc, char *argv[] )
 {
   FieldInfo fInfo;
-  fInfo.width_nm  = 1200;
-  fInfo.height_nm = 2200;
-  fInfo.depth_nm  = 1200;
-  fInfo.h_u_nm    = 10;
+  fInfo.width_nm  = 500;
+  fInfo.height_nm = 500;
+  fInfo.depth_nm  = 500;
+  fInfo.h_u_nm    = 5;
   fInfo.pml       = 10;
   fInfo.lambda_nm = start_lambda_nm;
   fInfo.stepNum   = 1500;
-  fInfo.theta_deg = 90;
+  fInfo.theta_deg = 0;
   fInfo.phi_deg   = 90;
-  enum MODEL modelType   = LAYER;//MIE_SPHERE;//NO_MODEL;
+  enum MODEL modelType   = MIE_SPHERE;//NO_MODEL;LAYER;//
   enum SOLVER solberType = MPI_FDTD_3D;
   move(modelType);
   MPI_Init( 0, 0 );  
@@ -100,6 +100,7 @@ int main( int argc, char *argv[] )
     //構造が終了か調べる
     if(models_isFinish())
       break;
+    
     // 10nm * 2 * 8レイヤ増える todo ハードコーディングはやめる
     fInfo.height_nm += 160;
     //lambdaも元に戻してる.
@@ -109,8 +110,7 @@ int main( int argc, char *argv[] )
       printf("next Simulation. lambda = %d, size(%d, %d, %d)\n",
            lambda_nm, fInfo.width_nm, fInfo.height_nm, fInfo.depth_nm);    
     MPI_Barrier(MPI_COMM_WORLD);
-  } 
-  
+  }
   MPI_Finalize();
 #endif
 
@@ -132,7 +132,7 @@ enum COLOR_MODE colorMode = CREAL;
     glutMainLoop();
 #endif
 
-    return 1;
+    return 0;
 }
 
 #ifdef USE_OPENGL

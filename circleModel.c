@@ -10,7 +10,7 @@ static double posy;
 static double posz;
 
 static double start_radius = 100;
-static double end_radius = 200;
+static double end_radius = 100;
 
 static double eps(double, double, double, int, int, int);
 

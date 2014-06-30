@@ -5,9 +5,16 @@
 #include "function.h"
 #include "myComplex.h"
 
-dcomplex *Ux,*Uy,*Uz,*Wx,*Wy,*Wz;
-double R; //観測点までの距離
+static dcomplex *Ux,*Uy,*Uz,*Wx,*Wy,*Wz;
+static double R; //観測点までの距離
 
+//sub領域に置ける, 積分路
+static int sub_ylt, sub_yrt, sub_yft, sub_ybk; //tp,bm面に置ける左右前後の範囲(直方体なので, tp面とbm面で違いは無い)
+static int sub_xtp, sub_xbm, sub_xft, sub_xbk;
+static int sub_zlt, sub_zrt, sub_ztp, sub_zbm;
+
+static int sub_tp, sub_bm, sub_rt, sub_lt, sub_ft, sub_bk;
+static bool IN_TP, IN_BM, IN_LT, IN_RT, IN_FT, IN_BK;
 void ntff3D_Init()
 {
   NTFFInfo nInfo = field_getNTFFInfo();
@@ -19,15 +26,65 @@ void ntff3D_Init()
   Wy = newDComplex(nInfo.arraySize * 360);
   Wz = newDComplex(nInfo.arraySize * 360);
 
-  R = 1.0e6 * field_getLambda_S();  
-}
+  R = 1.0e6 * field_getLambda_S();
 
-// 係数と最低限必要なインデックスをまとめて求める為のマクロ
-#define COEFF_AND_INDICES(i, j, k)                      \
-  double r2x = i+0.5-cx, r2y = j+0.5-cy, r2z = k+0.5-cz; \
-  double dot = r1x*r2x + r1y*r2y + r1z*r2z;               \
-  dcomplex coef = cexp( I*k_s*dot);                       \
-  int w = field_index(i, j, k);
+  double cx = nInfo.cx;
+  double cy = nInfo.cy;
+  double cz = nInfo.cz;
+  
+  int tp = nInfo.top;    int bm = nInfo.bottom;  //上下
+  int rt = nInfo.right;  int lt = nInfo.left;	 //左右
+  int ft = nInfo.front;  int bk = nInfo.back;    //前後
+
+  SubFieldInfo_S subInfo_s = field_getSubFieldInfo_S();
+  
+  sub_tp = tp - subInfo_s.OFFSET_Y;  sub_bm = bm - subInfo_s.OFFSET_Y;
+  sub_rt = rt - subInfo_s.OFFSET_X;  sub_lt = lt - subInfo_s.OFFSET_X;
+  sub_ft = ft - subInfo_s.OFFSET_Z;  sub_bk = bk - subInfo_s.OFFSET_Z;
+
+  //以下どれかでも満たせば積分路上に無い
+  bool outX = sub_rt <= 0 || sub_lt >= subInfo_s.SUB_N_PX-1; //rtより右, もしくはltより左の小領域
+  bool outY = sub_tp <= 0 || sub_bm >= subInfo_s.SUB_N_PY-1; //tpより上, もしくはbmより下の小領域
+  bool outZ = sub_ft <= 0 || sub_bk >= subInfo_s.SUB_N_PZ-1; //ftより前, もしくはbkより後ろの小領域
+  
+  // 小領域内にどの積分面が存在するか
+  IN_TP = (0 < sub_tp && sub_tp < subInfo_s.SUB_N_PY-1) && !outX && !outZ;
+  IN_BM = (0 < sub_bm && sub_bm < subInfo_s.SUB_N_PY-1) && !outX && !outZ;
+  IN_RT = (0 < sub_rt && sub_rt < subInfo_s.SUB_N_PX-1) && !outY && !outZ;
+  IN_LT = (0 < sub_lt && sub_lt < subInfo_s.SUB_N_PX-1) && !outY && !outZ;
+  IN_FT = (0 < sub_ft && sub_ft < subInfo_s.SUB_N_PZ-1) && !outX && !outY;
+  IN_BK = (0 < sub_bk && sub_bk < subInfo_s.SUB_N_PZ-1) && !outX && !outY;
+
+  sub_ylt=-1, sub_yrt=-2, sub_ybk=-1, sub_yft=-2 ;
+  if(IN_TP || IN_BM)
+  {
+    sub_yrt = min(subInfo_s.SUB_N_PX-2, max( 1, sub_rt) );
+    sub_ylt = min(subInfo_s.SUB_N_PX-2, max( 1, sub_lt) );
+    sub_yft = min(subInfo_s.SUB_N_PZ-2, max( 1, sub_ft) );
+    sub_ybk = min(subInfo_s.SUB_N_PZ-2, max( 1, sub_bk) );
+  }
+
+  sub_xtp=-2, sub_xbm=-1, sub_xbk=-1, sub_xft=-2;
+  if(IN_RT || IN_LT)
+  {
+    sub_xbm = min(subInfo_s.SUB_N_PY-2, max( 1, sub_bm+1) );  //bm,tpですでに計算しているため, ひとつずれる
+    sub_xtp = min(subInfo_s.SUB_N_PY-2, max( 1, sub_tp-1) );  //
+    sub_xft = min(subInfo_s.SUB_N_PZ-2, max( 1, sub_ft) );
+    sub_xbk = min(subInfo_s.SUB_N_PZ-2, max( 1, sub_bk) );
+  }
+
+  sub_ztp=-2, sub_zbm=-1, sub_zlt=-1, sub_zrt=-2;
+  if(IN_FT || IN_BK)
+  {
+    sub_zbm = min(subInfo_s.SUB_N_PY-2, max( 1, sub_bm+1) );  //bm,tp面ですでに計算しているため,一つずれる
+    sub_ztp = min(subInfo_s.SUB_N_PY-2, max( 1, sub_tp-1) );
+    sub_zrt = min(subInfo_s.SUB_N_PX-2, max( 1, sub_rt-1) );  //lt,rtも同様
+    sub_zlt = min(subInfo_s.SUB_N_PX-2, max( 1, sub_lt+1) );
+  }
+
+  printf("Rank=%d\ninTp=%d, inBm=%d, inLt=%d, inRt=%d, inFt=%d, inBk=%d\n offset(%d,%d,%d)\n",subInfo_s.Rank,IN_TP, IN_BM, IN_RT,IN_LT,IN_FT, IN_BK, subInfo_s.OFFSET_X, subInfo_s.OFFSET_Y, subInfo_s.OFFSET_Z);
+
+}
 
 //必ず COEFF_AND_INDICESの後に記述する
 //前後の面に必要なE,Hを求める
@@ -64,6 +121,7 @@ void ntff3D_Init()
   double r2x = i+0.5-cx, r2y = j+0.5-cy, r2z = k+0.5-cz; \
   double dot = r1x*r2x + r1y*r2y + r1z*r2z;               \
   dcomplex coef = cexp( I*k_s*dot);                     \
+
 
 
 static void frequencyNTFF(dcomplex *Ex, dcomplex *Ey,dcomplex *Ez,
@@ -592,3 +650,253 @@ void ntff3D_TimeOutput()
   }
 }
 
+//小領域に置ける,周波数NTFF
+static void subFrequencyNTFF(dcomplex *Ex, dcomplex *Ey,dcomplex *Ez,
+                             dcomplex *Hx, dcomplex *Hy, dcomplex *Hz,
+                             dcomplex *Eth, dcomplex *Eph, int theta, int phi)
+{
+  double k_s = field_getK_S();
+  dcomplex Coeffician = I * k_s / (4*M_PI*R) * cexp(-I*k_s*R); //
+  NTFFInfo nInfo = field_getNTFFInfo();
+  double cx = nInfo.cx;  double cy = nInfo.cy;  double cz = nInfo.cz;
+  int tp = nInfo.top;    int bm = nInfo.bottom; //上下
+  int rt = nInfo.right;  int lt = nInfo.left;   //左右
+  int ft = nInfo.front;  int bk = nInfo.back;   //前後
+  double Z0 = field_getZ_0_S();
+  double ToRad = M_PI/180.0;
+  
+  double theta_rad = theta * ToRad;
+  double phi_rad   =   phi * ToRad;
+  double r1x = sin(theta_rad)*cos(phi_rad);
+  double r1y = sin(theta_rad)*sin(phi_rad);
+  double r1z = cos(theta_rad);
+
+  dcomplex Nx = 0, Ny = 0, Nz = 0;
+  dcomplex Lx = 0, Ly = 0, Lz = 0;
+
+  SubFieldInfo_S subInfo_s = field_getSubFieldInfo_S();
+  //上下は, 蓋をするように全範囲を網羅
+  //上の面 n=(0,1,0)
+  // (N =) J = n × H = ( hz, 0, -hx)
+// (L =) M = E × n = (-ez, 0,  ex)
+  if(IN_TP)
+  {
+    for(int i=sub_ylt; i<=sub_yrt; i++)
+      for (int k=sub_ybk; k<=sub_yft; k++ )
+      {      
+        CALC_COEFF(i+subInfo_s.OFFSET_X, tp, k+subInfo_s.OFFSET_Z);
+        int w = field_subIndex(i, sub_tp, k);
+        SUB_EH_IN_XZ(w, ex, ez, hx, hz);
+        Nx += hz*coef;      Nz -= hx*coef;
+        Lx -= ez*coef;      Lz += ex*coef;
+      }
+  }
+  
+  //下の面 n=(0,-1,0)
+  // (N =) J = n × H = (-hz, 0, hx)
+  // (L =) M = E × n = ( ez, 0,-ex)
+  if(IN_BM)
+  {
+    for(int i=sub_ylt; i<=sub_yrt; i++)
+      for (int k=sub_ybk; k<=sub_yft; k++ )
+      {
+        CALC_COEFF(i+subInfo_s.OFFSET_X, bm, k+subInfo_s.OFFSET_Z);
+        int w = field_subIndex(i, sub_bm, k);
+        SUB_EH_IN_XZ(w, ex, ez, hx,hz);
+        Nx -= hz*coef;      Nz += hx*coef;
+        Lx += ez*coef;      Lz -= ex*coef;
+      }
+  }
+  
+  //前の面 n=(0, 0, 1)
+  // (N =) J = n × H = ( -hy, hx, 0)
+  // (L =) M = E × n = ( ey ,-ex,  0)
+  if(IN_FT)
+  {
+    for ( int i=sub_zlt; i<=sub_zrt; i++ )
+      for( int j=sub_zbm; j<=sub_ztp; j++) {
+        CALC_COEFF(i+subInfo_s.OFFSET_X, j+subInfo_s.OFFSET_Y, ft);
+        int w = field_subIndex(i, j, sub_ft);
+        SUB_EH_IN_XY(w, ex, ey, hx, hy);//ex, ey, hx, hyを補完して求める
+        Nx -= hy*coef;      Ny += hx*coef;
+        Lx += ey*coef;      Ly -= ex*coef;
+      }
+  }
+  
+  //後の面 n=(0, 0, -1)
+  // (N =) J = n × H = ( hy,-hx, 0)
+  // (L =) M = E × n = (-ey, ex,  0)
+  if(IN_BK)
+  {
+    for ( int i=sub_zlt; i<=sub_zrt; i++ )
+      for( int j=sub_zbm; j<=sub_ztp; j++) {
+        CALC_COEFF(i+subInfo_s.OFFSET_X, j+subInfo_s.OFFSET_Y, bk); //このファイルの最初に書いてある
+        int w = field_subIndex(i, j, sub_bk);
+        SUB_EH_IN_XY(w, ex, ey, hx, hy);//ex, ey, hx, hyを補完して求める
+        Nx += hy*coef;      Ny -= hx*coef;
+        Lx -= ey*coef;      Ly += ex*coef;      
+      }
+  }
+  
+  //右の面 n=(1,0,0)
+  // (N =) J = n × H = (  0, -hz, hy)
+  // (L =) M = E × n = (  0,  ez,-ey)
+  if(IN_RT)
+  {
+    for(int j=sub_xbm; j<=sub_xtp; j++)
+      for(int k=sub_xbk; k<=sub_xft; k++){
+        CALC_COEFF(rt, j+subInfo_s.OFFSET_Y, k+subInfo_s.OFFSET_Z);
+        int w = field_subIndex(sub_rt, j, k);
+        SUB_EH_IN_YZ(w, ey,ez, hy,hz);
+        Ny -= hz*coef;      Nz += hy*coef;
+        Ly += ez*coef;      Lz -= ey*coef;
+      }
+  }
+  
+  //左の面 n=(-1, 0, 0)
+  // (N =) J = n × H = (  0, hz,-hy)
+  // (L =) M = E × n = (  0,-ez, ey)
+  if(IN_LT)
+  {
+    for(int j=sub_xbm; j<=sub_xtp; j++)
+      for(int k=sub_xbk; k<=sub_xft; k++){
+        CALC_COEFF(lt, j+subInfo_s.OFFSET_Y, k+subInfo_s.OFFSET_Z);
+        int w = field_subIndex(sub_lt, j, k);
+        SUB_EH_IN_YZ(w, ey, ez, hy,hz);
+        Ny += hz*coef;      Nz -= hy*coef;
+        Ly -= ez*coef;      Lz += ey*coef;
+      }
+  }
+  
+  double sx = cos(theta_rad)*cos(phi_rad);
+  double sy = cos(theta_rad)*sin(phi_rad);
+  double sz = -sin(theta_rad);
+  double px = -sin(phi_rad);
+  double py = cos(phi_rad);
+
+  dcomplex Nth = sx*Nx + sy*Ny + sz*Nz;
+  dcomplex Nph = px*Nx + py*Ny;
+  dcomplex Lth = sx*Lx + sy*Ly + sz*Lz;
+  dcomplex Lph = px*Lx + py*Ly;
+
+  *Eth = Coeffician*(Z0*Nth - Lph); //宇野先生の本では Nth, Nphに-がついていた.
+  *Eph = Coeffician*(Z0*Nph + Lth);
+}
+
+//戻り値はRankが0か否か
+static bool sumToRank0(dcomplex *p, int size)
+{
+  SubFieldInfo_S subInfo_s = field_getSubFieldInfo_S();
+  
+  if( subInfo_s.Rank == 0 )
+  {
+    MPI_Status status;
+    dcomplex *tmp = newDComplex(size);
+    for(int i=1; i<subInfo_s.Nproc; i++)
+    {
+      MPI_Recv(tmp, size, MPI_C_DOUBLE_COMPLEX, i, 0, MPI_COMM_WORLD, &status);
+      for(int j=0; j<size; j++)
+        p[j] += tmp[j];
+    }
+    free(tmp);
+    return true;
+  }
+  else {
+    MPI_Send(p, size, MPI_C_DOUBLE_COMPLEX, 0, 0, MPI_COMM_WORLD);
+    return false;
+  }
+}
+
+void ntff3D_SubFrequency( dcomplex *Ex, dcomplex *Ey,dcomplex *Ez,
+                       dcomplex *Hx, dcomplex *Hy, dcomplex *Hz)
+{
+  dcomplex Eth[360], Eph[360];
+  SubFieldInfo_S subInfo_s = field_getSubFieldInfo_S();
+  
+  //YZ平面の遠方解を出力
+  {
+    for(int theta=0, phi=90; theta<360; theta++)
+    {
+      subFrequencyNTFF(Ex, Ey, Ez, Hx, Hy, Hz, &Eth[theta], &Eph[theta], theta, phi);
+    }
+    
+    if(sumToRank0(Eth, 360))
+    {
+      FILE *fpEth_yz = openFile("Eth_yz.txt");      
+      for(int i=0; i<360; i++)
+      {
+        fprintf(fpEth_yz, "%.18lf %.18lf\n", creal(Eth[i]), cimag(Eth[i]));
+      }          
+      fclose(fpEth_yz);
+    }
+    
+    if(sumToRank0(Eph, 360))
+    {
+      FILE *fpEph_yz = openFile("Eph_yz.txt");
+      for(int i=0; i<360; i++)
+      {
+        fprintf(fpEph_yz, "%.18lf %.18lf\n", creal(Eph[i]), cimag(Eph[i]));
+      }
+      fclose(fpEph_yz);
+    }
+  }
+  
+  //XZ平面の遠方解を出力
+  {
+    FILE *fpEth_xz = openFile("Eth_xz.txt");
+    FILE *fpEph_xz = openFile("Eph_xz.txt");
+
+    for(int theta=0, phi=0; theta<360; theta++)
+    {
+      subFrequencyNTFF(Ex, Ey, Ez, Hx, Hy, Hz, &Eth[theta], &Eph[theta], theta, phi);
+    }
+    
+    if(sumToRank0(Eth, 360))
+    {
+      FILE *fpEth_xz = openFile("Eth_xz.txt");
+      for(int i=0; i<360; i++)
+      {
+        fprintf(fpEth_xz, "%.18lf %.18lf\n", creal(Eth[i]), cimag(Eth[i]));
+      }          
+      fclose(fpEth_xz);
+    }
+    
+    if(sumToRank0(Eph, 360))
+    {
+      FILE *fpEph_xz = openFile("Eph_xz.txt");
+      for(int i=0; i<360; i++)
+      {
+        fprintf(fpEph_xz, "%.18lf %.18lf\n", creal(Eph[i]), cimag(Eph[i]));
+      }
+      fclose(fpEph_xz);
+    }
+  }
+    
+  //XY平面の遠方解を出力
+  {
+    for(int theta=90, phi=0; phi<360; phi++)
+    {
+      subFrequencyNTFF(Ex, Ey, Ez, Hx, Hy, Hz, &Eth[phi], &Eph[phi], theta, phi);
+    }
+    
+    if(sumToRank0(Eth, 360))
+    {
+      FILE *fpEth_xy = openFile("Eth_xy.txt");
+      for(int i=0; i<360; i++)
+      {
+        fprintf(fpEth_xy, "%.18lf %.18lf\n", creal(Eth[i]), cimag(Eth[i]));
+      }
+      fclose(fpEth_xy);
+    }
+    
+    if(sumToRank0(Eph, 360))
+    {
+      FILE *fpEph_xy = openFile("Eph_xy.txt");
+      for(int i=0; i<360; i++)
+      {
+        fprintf(fpEph_xy, "%.18lf %.18lf\n", creal(Eph[i]), cimag(Eph[i]));
+      }
+      fclose(fpEph_xy);
+    }
+  }
+}
