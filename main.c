@@ -34,9 +34,6 @@ static void idle(void);
 
 #endif
 
-static int rank;
-static int numProc;
-
 static int start_lambda_nm = 500;
 static int end_lambda_nm   = 500;
 void move(enum MODEL modelType)
@@ -51,6 +48,9 @@ void move(enum MODEL modelType)
     makeDirectory("Mie");
     moveDirectory("Mie");
     break;
+  default :
+    printf("set Model Layer or Sphere");
+    exit(2);
   }
 }
 

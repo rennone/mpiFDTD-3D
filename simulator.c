@@ -85,11 +85,18 @@ void simulator_init(FieldInfo field_info, enum MODEL model, enum SOLVER solver){
 }
 
 void simulator_finish(){
+
   printf("finish\n");
   gettimeofday(&timer2,NULL);
   printf("time = %lf \n", timer2.tv_sec-timer1.tv_sec+(timer2.tv_usec-timer1.tv_usec)*1e-6);
 
-  (*finishMethod)(); //メモリの解放等  
+  struct timeval tim1, tim2;
+  gettimeofday(&tim1,NULL);
+  
+  (*finishMethod)(); //メモリの解放等 
+
+  gettimeofday(&tim2,NULL);
+  printf("finish time = %lf \n", tim2.tv_sec-tim1.tv_sec+(tim2.tv_usec-tim1.tv_usec)*1e-6);
 }
 
 double complex* simulator_getDrawingData(void){
@@ -107,7 +114,12 @@ void simulator_reset()
   gettimeofday(&timer2,NULL);
   printf("time = %lf \n", timer2.tv_sec-timer1.tv_sec+(timer2.tv_usec-timer1.tv_usec)*1e-6);
 
+  struct timeval tim1, tim2;
+  gettimeofday(&tim1,NULL);  
   (*resetMethod)();
+  gettimeofday(&tim2,NULL);
+  printf("reset time = %lf \n", tim2.tv_sec-tim1.tv_sec+(tim2.tv_usec-tim1.tv_usec)*1e-6);
+  
   field_reset();
   gettimeofday(&timer1, NULL);
 }
