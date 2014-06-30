@@ -610,9 +610,10 @@ void ntff3D_TimeOutput()
 static inline void subFrequencyNTFF(dcomplex *Ex, dcomplex *Ey,dcomplex *Ez,
                              dcomplex *Hx, dcomplex *Hy, dcomplex *Hz,
                              dcomplex *Eth, dcomplex *Eph,
-                             double theta_rad, double phi_rad, dcomplex Coeffician)
+                             double theta_rad, double phi_rad)
 {
   double k_s = field_getK_S();
+  dcomplex Coeffician =  I * k_s / (4*M_PI*R) * cexp(-I*k_s*R);
   NTFFInfo nInfo = field_getNTFFInfo();
   double cx = nInfo.cx;  double cy = nInfo.cy;  double cz = nInfo.cz;
   int tp = nInfo.top;    int bm = nInfo.bottom; //上下
@@ -776,7 +777,7 @@ void ntff3D_SubFrequency( dcomplex *Ex, dcomplex *Ey,dcomplex *Ez,
     int theta = 90;
     for(int phi=0 ; phi<360 ; phi++)
     {
-      subFrequencyNTFF(Ex, Ey, Ez, Hx, Hy, Hz, &Eth[theta][phi], &Eph[theta][phi], theta*ToRad, phi*ToRad, Coeffician);
+      subFrequencyNTFF(Ex, Ey, Ez, Hx, Hy, Hz, &Eth[theta][phi], &Eph[theta][phi], theta*ToRad, phi*ToRad /*, Coeffician*/);
     }
 //  }  
 
