@@ -610,7 +610,7 @@ void ntff3D_TimeOutput()
 static inline void subFrequencyNTFF(dcomplex *Ex, dcomplex *Ey,dcomplex *Ez,
                              dcomplex *Hx, dcomplex *Hy, dcomplex *Hz,
                              dcomplex *Eth, dcomplex *Eph,
-                             double theta_rad, double phi_rad, double Coeffician)
+                             double theta_rad, double phi_rad, dcomplex Coeffician)
 {
   double k_s = field_getK_S();
   NTFFInfo nInfo = field_getNTFFInfo();
