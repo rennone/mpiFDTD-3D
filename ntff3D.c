@@ -26,7 +26,7 @@ void ntff3D_Init()
   Wy = newDComplex(nInfo.arraySize * 360);
   Wz = newDComplex(nInfo.arraySize * 360);
 
-  R = 1.0e6 * field_getLambda_S();
+  R = 1.0e6 * field_toCellUnit(500);//* field_getLambda_S();
 
   double cx = nInfo.cx;
   double cy = nInfo.cy;
@@ -772,32 +772,44 @@ void ntff3D_SubFrequency( dcomplex *Ex, dcomplex *Ey,dcomplex *Ez,
   dcomplex Coeffician = I * k_s / (4*M_PI*R) * cexp(-I*k_s*R);
 
   double ToRad = M_PI/180.0;
-//  for(int theta=0 ;theta<=180; theta++)
-//  {
-    int theta = 90;
+  for(int theta=0 ;theta<=180; theta++)
+  {
     for(int phi=0 ; phi<360 ; phi++)
     {
       subFrequencyNTFF(Ex, Ey, Ez, Hx, Hy, Hz, &Eth[theta][phi], &Eph[theta][phi], theta*ToRad, phi*ToRad, Coeffician);
     }
-//  }  
+  }  
 
+  FieldInfo fInfo = field_getFieldInfo();
   if(sumToRank0(Eth, 181*360))
   {
-    FILE *fpEth_xy = openFile("Eth_xy.txt");
-    for(int i=0; i<360; i++)
-    {
-      fprintf(fpEth_xy, "%.18lf %.18lf\n", creal(Eth[theta][i]), cimag(Eth[theta][i]));
-    }
-    fclose(fpEth_xy);
+    char buf[512];
+    sprintf(buf, "%dnm_Eth_str.txt",fInfo.lambda_nm);
+    FILE *fpEth = openFile(buf);
+    for(int theta=0; theta<=180;theta++)
+      {
+	for(int phi=0; phi<360; phi++)
+	  {
+	    fprintf(fpEth, "%.20lf ", cnorm(Eth[theta][phi]));
+	  }    
+	fprintf(fpEth, "\n");
+      }
+    fclose(fpEth);
   }
-    
+  
   if(sumToRank0(Eph, 181*360))
-  {   
-    FILE *fpEph_xy = openFile("Eph_xy.txt");
-    for(int i=0; i<360; i++)
-    {
-      fprintf(fpEph_xy, "%.18lf %.18lf\n", creal(Eph[theta][i]), cimag(Eph[theta][i]));
-    }
-    fclose(fpEph_xy);
+  {
+    char buf[512];
+    sprintf(buf, "%dnm_Eph_str.txt",fInfo.lambda_nm);
+    FILE *fpEph = openFile(buf);
+    for(int theta=0; theta<=180; theta++)
+      {
+	for(int phi=0; phi<360; phi++)
+	  {
+	    fprintf(fpEph, "%.20lf ", cnorm(Eph[theta][phi]));
+	  }
+	fprintf(fpEph, "\n");
+      }
+    fclose(fpEph);
   }  
 }

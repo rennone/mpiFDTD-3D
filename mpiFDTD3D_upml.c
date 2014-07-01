@@ -345,7 +345,7 @@ static void Connection_ISendIRecvE(void)
   //上下のランクとの同期
   int tpSend = field_subIndex(1, subInfo_s.SUB_N_PY-2, 1); //最上の一つ下を送る
   int bmRecv = field_subIndex(1, 0, 1);                    //最下に格納する
-  MPI_ISend(&Ez[tpSend], 1, MPI_DCOMPLEX_XZ_PLANE, subInfo_s.TpRank, 1, MPI_COMM_WORLD, &req3);
+  MPI_Isend(&Ez[tpSend], 1, MPI_DCOMPLEX_XZ_PLANE, subInfo_s.TpRank, 1, MPI_COMM_WORLD, &req3);
   MPI_Irecv(&Ez[bmRecv], 1, MPI_DCOMPLEX_XZ_PLANE, subInfo_s.BmRank, 1, MPI_COMM_WORLD, &req4);
 
   //前後のランクとの同期

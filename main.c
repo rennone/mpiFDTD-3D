@@ -34,8 +34,8 @@ static void idle(void);
 
 #endif
 
-static int start_lambda_nm = 500;
-static int end_lambda_nm   = 500;
+static int start_lambda_nm = 380;
+static int end_lambda_nm   = 640;
 void move(enum MODEL modelType)
 {
   switch(modelType)
@@ -57,16 +57,16 @@ void move(enum MODEL modelType)
 int main( int argc, char *argv[] )
 {
   FieldInfo fInfo;
-  fInfo.width_nm  = 500;
-  fInfo.height_nm = 500;
-  fInfo.depth_nm  = 500;
-  fInfo.h_u_nm    = 5;
+  fInfo.width_nm  = 1000;
+  fInfo.height_nm = 80*2*8 + 20*10 + 100; //model height + (pml+ntff)*h_u + padding
+  fInfo.depth_nm  = 1000;
+  fInfo.h_u_nm    = 10;
   fInfo.pml       = 10;
   fInfo.lambda_nm = start_lambda_nm;
   fInfo.stepNum   = 1500;
   fInfo.theta_deg = 0;
   fInfo.phi_deg   = 90;
-  enum MODEL modelType   = MIE_SPHERE;//NO_MODEL;LAYER;//
+  enum MODEL modelType   = LAYER;//MIE_SPHERE;//NO_MODEL;
   enum SOLVER solberType = MPI_FDTD_3D;
   move(modelType);
   MPI_Init( 0, 0 );  

@@ -13,7 +13,7 @@ static int layerNum;          //枚数
 static bool asymmetry;      //左右比対称
 
 static int start_thickness_nm = 80;
-static int end_thickness_nm   = 110;
+static int end_thickness_nm   = 120;
 
 //col : D_Xモード row : D_Yモード
 //x,yを中心に, 計算領域のセルと同じ大きさの領域を調べる
