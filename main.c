@@ -58,7 +58,7 @@ int main( int argc, char *argv[] )
 {
   FieldInfo fInfo;
   fInfo.width_nm  = 1000;
-  fInfo.height_nm = 80*2*8 + 20*10 + 100; //model height + (pml+ntff)*h_u + padding
+  fInfo.height_nm = 80*2*8 + 2*(10+5)*10 + 200; //model height + 2*(pml+ntff)*h_u + padding
   fInfo.depth_nm  = 1000;
   fInfo.h_u_nm    = 10;
   fInfo.pml       = 10;

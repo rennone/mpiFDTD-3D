@@ -219,8 +219,8 @@ static void update(void)
   Connection_SendRecvH();
   calcJDE();
 
-//  scatteredWave(Ey, EPS_EY, 0.5, 0.0, 0.5);
-  scatteredPulse(Ey, EPS_EY, 0.5, 0.0, 0.5);
+  scatteredWave(Ez, EPS_EZ, 0.5, 0.5, 0.0);
+  //  scatteredPulse(Ey, EPS_EY, 0.5, 0.0, 0.5);
   Connection_SendRecvE();
 
 //  ntff3D_SubTimeCalc(Ex, Ey, Ez, Hx, Hy, Hz);
