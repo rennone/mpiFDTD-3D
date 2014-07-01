@@ -12,8 +12,13 @@ static double ep[2];           //誘電率 = n*n*ep0
 static int layerNum;          //枚数
 static bool asymmetry;      //左右比対称
 
+static int start_depth_nm =  300;
+static int end_depth_nm   = 1000;
+static int delta_depth_nm = 100;
+
 static int start_thickness_nm = 80;
 static int end_thickness_nm   = 120;
+static int delta_thickness_nm = 10;
 
 //col : D_Xモード row : D_Yモード
 //x,yを中心に, 計算領域のセルと同じ大きさの領域を調べる
@@ -84,8 +89,8 @@ double ( *multilayerModel_EPS(void))(double, double, double, int, int, int)
 {
   width_s[0]     = field_toCellUnit(300);
   width_s[1]     = field_toCellUnit(300);
-  depth_s[0]     = field_toCellUnit(300);
-  depth_s[1]     = field_toCellUnit(300);
+  depth_s[0]     = field_toCellUnit(start_depth_nm);
+  depth_s[1]     = field_toCellUnit(start_depth_nm);
   thickness_s[0] = field_toCellUnit(start_thickness_nm);
   thickness_s[1] = field_toCellUnit(start_thickness_nm);
   layerNum = 8;
@@ -105,29 +110,50 @@ void multilayerModel_setThickness(int thickness1_nm, int thickness2_nm)
   thickness_s[1] = field_toCellUnit(thickness2_nm);
 }
 
+// 構造が終わったか確認
 bool multilayerModel_isFinish()
 {
-  //10nm増やす
-  thickness_s[0] += field_toCellUnit(10);
-  thickness_s[1] += field_toCellUnit(10);
-  
-  return thickness_s[0] > field_toCellUnit(end_thickness_nm);
+  depth_s[0] += field_toCellUnit(delta_depth_nm);
+  depth_s[1] += field_toCellUnit(delta_depth_nm);
+
+  //奥行きが大きくなったら,厚みを増やす
+  if(depth_s[0] > field_toCellUnit(end_depth_nm))
+  {
+    thickness_s[0] += field_toCellUnit(delta_thickness_nm);
+    thickness_s[1] += field_toCellUnit(delta_thickness_nm);
+    
+    depth_s[0] = field_toCellUnit(start_depth_nm);
+    depth_s[1] = field_toCellUnit(start_depth_nm);
+
+    //厚みがend_thicknessに達したら終了
+    if(thickness_s[0] > field_toCellUnit(end_thickness_nm))
+      return true;    
+  }
+
+  return false;
 }
 
 void multilayerModel_needSize(int *x_nm, int *y_nm,int *z_nm)
 {
   double width = max(width_s[0], width_s[1]);
+  double depth = max(depth_s[0], depth_s[1]);
   double thick = thickness_s[0] + thickness_s[1];
   (*x_nm) = field_toPhysicalUnit(width);
-  (*z_nm) = field_toPhysicalUnit(width);
+  (*z_nm) = field_toPhysicalUnit(depth);
   (*y_nm) = field_toPhysicalUnit(thick*layerNum);
+/*
+  printf("w=%d,d=%d,t=%d\n",(int)field_toPhysicalUnit(width),
+         (int)field_toPhysicalUnit(depth),
+         (int)field_toPhysicalUnit(thick*layerNum));
+*/
 }
 
 void multilayerModel_moveDirectory()
 {
   char buf[512];
 
-  sprintf(buf, "%d_nm",(int)field_toPhysicalUnit(thickness_s[0]));
+  sprintf(buf, "thick_%dnm_depth_%dnm",(int)field_toPhysicalUnit(thickness_s[0]),
+    (int)field_toPhysicalUnit(depth_s[0]));
   makeDirectory(buf);
   moveDirectory(buf);
 }

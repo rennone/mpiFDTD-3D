@@ -100,9 +100,15 @@ int main( int argc, char *argv[] )
     //構造が終了か調べる
     if(models_isFinish())
       break;
+
+    int x_nm, y_nm, z_nm;
+    //モデルに必要な大きさを求める
+    models_needSize(&x_nm, &y_nm, &z_nm);
     
-    // 10nm * 2 * 8レイヤ増える todo ハードコーディングはやめる
-    fInfo.height_nm += 160;
+    fInfo.width_nm  = x_nm + fInfo.h_u_nm*(fInfo.pml + 10) + 100; //モデルの大きさ + pmlレイヤ + 遠方解の積分路(端から5ずつ) + 余白
+    fInfo.depth_nm  = z_nm + fInfo.h_u_nm*(fInfo.pml + 10) + 100;
+    fInfo.height_nm = y_nm + fInfo.h_u_nm*(fInfo.pml + 10) + 100;
+
     //lambdaも元に戻してる.
     simulator_resetField(fInfo);
     SubFieldInfo_S sInfo_s = field_getSubFieldInfo_S();

@@ -136,7 +136,7 @@ void field_init(FieldInfo field_info)
   Z_0_S = sqrt(MU_0_S/EPSILON_0_S);
   //フィールド情報の保存(最初にしないとtoCellUnit, PhisicalUnitが使えない.
   fieldInfo = field_info;
-  
+
   //領域のシミュレータパラメータを計算
   fieldInfo_s.N_PX  = field_toCellUnit(fieldInfo.width_nm);
   fieldInfo_s.N_PY  = field_toCellUnit(fieldInfo.height_nm);

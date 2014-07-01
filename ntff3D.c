@@ -15,10 +15,12 @@ static int sub_zlt, sub_zrt, sub_ztp, sub_zbm;
 
 static int sub_tp, sub_bm, sub_rt, sub_lt, sub_ft, sub_bk;
 static bool IN_TP, IN_BM, IN_LT, IN_RT, IN_FT, IN_BK;
+
 void ntff3D_Init()
 {
   NTFFInfo nInfo = field_getNTFFInfo();
 
+  
   Ux = newDComplex(nInfo.arraySize * 360);
   Uy = newDComplex(nInfo.arraySize * 360);
   Uz = newDComplex(nInfo.arraySize * 360);
@@ -241,36 +243,6 @@ void ntff3D_Frequency( dcomplex *Ex, dcomplex *Ey,dcomplex *Ez,
                        dcomplex *Hx, dcomplex *Hy, dcomplex *Hz)
 {
   dcomplex Eth, Eph;
-  /*
-  //YZ平面の遠方解を出力
-  {
-    FILE *fpEth_yz = openFile("Eth_yz.txt");
-    FILE *fpEph_yz = openFile("Eph_yz.txt");
-    for(int theta=0, phi=90; theta<360; theta++)
-    {
-      frequencyNTFF(Ex, Ey, Ez, Hx, Hy, Hz, &Eth, &Eph, theta, phi);
-      fprintf(fpEth_yz, "%.18lf %.18lf\n", creal(Eth), cimag(Eth));
-      fprintf(fpEph_yz, "%.18lf %.18lf\n", creal(Eph), cimag(Eph));
-    }
-    fclose(fpEth_yz);
-    fclose(fpEph_yz);
-  }
-  
-  //XZ平面の遠方解を出力
-  {
-    FILE *fpEth_xz = openFile("Eth_xz.txt");
-    FILE *fpEph_xz = openFile("Eph_xz.txt");
-    for(int theta=0, phi=0; theta<360; theta++)
-    {
-      frequencyNTFF(Ex, Ey, Ez, Hx, Hy, Hz, &Eth, &Eph, theta, phi);
-      fprintf(fpEth_xz, "%.18lf %.18lf\n", creal(Eth), cimag(Eth));
-      fprintf(fpEph_xz, "%.18lf %.18lf\n", creal(Eph), cimag(Eph));
-    }
-    fclose(fpEth_xz);
-    fclose(fpEph_xz);
-  }
-
-  */
     
   //XY平面の遠方解を出力
   {
@@ -346,7 +318,7 @@ static inline void calc(double time_plus_timeShift, dcomplex eh,  dcomplex *UW_a
 }
 
 void ntff3D_SubTimeCalc(dcomplex *Ex,dcomplex *Ey,dcomplex *Ez,
-                     dcomplex *Hx,dcomplex *Hy,dcomplex *Hz)
+                               dcomplex *Hx,dcomplex *Hy,dcomplex *Hz)
 {
   double timeE = field_getTime() - 1;   //t - Δt
   double timeH = field_getTime() - 0.5; //t - Δt/2  
@@ -362,12 +334,10 @@ void ntff3D_SubTimeCalc(dcomplex *Ex,dcomplex *Ey,dcomplex *Ez,
   
   int index_ang = 0;  //角度angの0番目のインデックス
 
-//  const double theta_rad = 0;
   double phi_rad = M_PI/2.0;
   const double ToRad = M_PI/180.0;
   for(int theta=0; theta < 360; theta++, index_ang+=nInfo.arraySize)
   {
-//    double phi_rad = phi*ToRad;
     double theta_rad = theta*ToRad;
     double r1x_per_c = sin(theta_rad)*cos(phi_rad)/C_0_S;
     double r1y_per_c = sin(theta_rad)*sin(phi_rad)/C_0_S;
@@ -379,12 +349,12 @@ void ntff3D_SubTimeCalc(dcomplex *Ex,dcomplex *Ey,dcomplex *Ez,
     dcomplex *Wy_ang = &Wy[index_ang];    dcomplex *Wz_ang = &Wz[index_ang];
 
     //前の面 n=(0, 0, 1)
-    // (N =) J = n × H = (-hy, hx, 0)
-    // (L =) M = E × n = ( ey,-ex,  0)
+    // (W =) J = n × H = (-hy, hx, 0)
+    // (U =) M = E × n = ( ey,-ex,  0)
     if( IN_FT )
     {
-      for ( int i=sub_zlt; i<sub_zrt; i++ )
-        for( int j=sub_zbm; j<sub_ztp; j++) {
+      for ( int i=sub_zlt; i<=sub_zrt; i++ )
+        for( int j=sub_zbm; j<=sub_ztp; j++) {
           SUB_TIME_SHIFT(i+subInfo_s.OFFSET_X , j+subInfo_s.OFFSET_Y, ft);
           int w = field_subIndex(i, j, sub_ft);
           SUB_EH_IN_XY(w, ex, ey, hx, hy);
@@ -401,8 +371,8 @@ void ntff3D_SubTimeCalc(dcomplex *Ex,dcomplex *Ey,dcomplex *Ez,
     // (U =) M = E × n = ( ey,-ex,  0)
     if( IN_BK )
     {
-      for ( int i=sub_zlt; i<sub_zrt; i++ )
-        for( int j=sub_zbm; j<sub_ztp; j++) {        
+      for ( int i=sub_zlt; i<=sub_zrt; i++ )
+        for( int j=sub_zbm; j<=sub_ztp; j++) {        
           SUB_TIME_SHIFT(i+subInfo_s.OFFSET_X, j+subInfo_s.OFFSET_Y, bk);
           int w = field_subIndex(i, j, sub_bk);
         
@@ -419,8 +389,8 @@ void ntff3D_SubTimeCalc(dcomplex *Ex,dcomplex *Ey,dcomplex *Ez,
     // (U =) M = E × n = (  0,  ez,-ey)
     if( IN_RT )
     {
-      for(int j=sub_xbm; j<sub_xtp; j++)
-        for(int k=sub_xbk; k<sub_xft; k++){
+      for(int j=sub_xbm; j<=sub_xtp; j++)
+        for(int k=sub_xbk; k<=sub_xft; k++){
           SUB_TIME_SHIFT(sub_rt, j+subInfo_s.OFFSET_Y, k+subInfo_s.OFFSET_Z);
           int w = field_subIndex(sub_rt, j, k);
         
@@ -431,6 +401,7 @@ void ntff3D_SubTimeCalc(dcomplex *Ex,dcomplex *Ey,dcomplex *Ez,
           calc(timeH+timeShift, hy, Wz_ang);
         }
     }
+    
     //左の面 n=(-1, 0, 0)
     // (W =) J = n × H = (  0, hz,-hy)
     // (U =) M = E × n = (  0,-ey, ez)
@@ -448,13 +419,14 @@ void ntff3D_SubTimeCalc(dcomplex *Ex,dcomplex *Ey,dcomplex *Ez,
           calc(timeH+timeShift, hy, Wz_ang);
         }
     }
+    
     //上の面 n=(0,1,0)
     // (W =) J = n × H = ( hz, 0, -hx)
     // (U =) M = E × n = (-ez, 0,  ex)
     if( IN_TP )
     {
-      for(int i=sub_ylt; i<sub_yrt; i++)
-        for (int k=sub_ybk; k<sub_yft; k++ )
+      for(int i=sub_ylt; i<=sub_yrt; i++)
+        for (int k=sub_ybk; k<=sub_yft; k++ )
         {
           SUB_TIME_SHIFT(i+subInfo_s.OFFSET_X, tp, k+subInfo_s.OFFSET_Z);
           int w = field_subIndex(i, sub_tp, k);
@@ -466,13 +438,14 @@ void ntff3D_SubTimeCalc(dcomplex *Ex,dcomplex *Ey,dcomplex *Ez,
           calc(timeH+timeShift,-hx, Wz_ang);
         }
     }
+    
     //下の面 n=(0,-1,0)
     // (W =) J = n × H = (-hz, 0, hx)
     // (U =) M = E × n = ( ez, 0,-ex)
     if( IN_BM )
     {
-      for(int i=sub_ylt; i<sub_yrt; i++)
-        for (int k=sub_ybk; k<sub_yft; k++ )
+      for(int i=sub_ylt; i<=sub_yrt; i++)
+        for (int k=sub_ybk; k<=sub_yft; k++ )
         {
           SUB_TIME_SHIFT(i+subInfo_s.OFFSET_X, bk, k+subInfo_s.OFFSET_Z);
           int w = field_subIndex(i, sub_bm, k);
@@ -570,18 +543,28 @@ void outputTimeDomainData(const char *fileName, dcomplex *data)
 //時間領域のEthの書き出し.
 void ntff3D_TimeOutput()
 {
+  NTFFInfo nInfo = field_getNTFFInfo();
+  dcomplex *Eth, *Eph;
+  int size = 360*nInfo.arraySize;
+  Eth = newDComplex(size);
+  Eph = newDComplex(size);
+
+  for(int theta=0; theta<360; theta++)
+  {
+    int ind = theta * nInfo.arraySize;
+    ntff3D_TimeTranslate(&Ux[ind], &Uy[ind], &Uz[ind],
+                         &Wx[ind], &Wy[ind], &Wz[ind],
+                         &Eth[ind], &Eph[ind],
+                         theta, 90);
+  }
+
   //ランク0に集める
   unifyToRank0(Ux);  unifyToRank0(Uy);    unifyToRank0(Uz);
   unifyToRank0(Wx);  unifyToRank0(Wy);    unifyToRank0(Wz);
-
+  unifyToRank0(Eth); unifyToRank0(Eph);
   SubFieldInfo_S sInfo_s = field_getSubFieldInfo_S();
   if(sInfo_s.Rank == 0)
   {
-    NTFFInfo nInfo = field_getNTFFInfo();
-    dcomplex *Eth, *Eph;
-    int size = 360*nInfo.arraySize;
-    Eth = newDComplex(size);
-    Eph = newDComplex(size);
 
     outputTimeDomainData("Ux_zy.txt", Ux);
     outputTimeDomainData("Uy_zy.txt", Uy);
@@ -589,21 +572,12 @@ void ntff3D_TimeOutput()
     outputTimeDomainData("Wx_zy.txt", Wx);
     outputTimeDomainData("Wy_zy.txt", Wy);
     outputTimeDomainData("Wz_zy.txt", Wz);
-
-    for(int theta=0; theta<360; theta++)
-    {
-      int ind = theta * nInfo.arraySize;
-      ntff3D_TimeTranslate(&Ux[ind], &Uy[ind], &Uz[ind],
-                           &Wx[ind], &Wy[ind], &Wz[ind],
-                           &Eth[ind], &Eph[ind],
-                           theta, 90);
-    }
-
     outputTimeDomainData("Eth_time_zy.txt", Eth);
     outputTimeDomainData("Eph_time_zy.txt", Eph);
-    free(Eth);
-    free(Eph);
   }
+  
+  free(Eth);
+  free(Eph);
 }
 
 //小領域に置ける,周波数NTFF

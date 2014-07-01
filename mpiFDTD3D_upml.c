@@ -214,16 +214,13 @@ static void reset()
 
 //Update
 static void update(void)
-{
-
+{ 
   calcMBH();
   Connection_SendRecvH();
-//  MPI_Barrier(MPI_COMM_WORLD);
   calcJDE();
 
-  scatteredWave(Ey, EPS_EY, 0.5, 0.0, 0.5);
-//  scatteredPulse(Ey, EPS_EY, 0.5, 0.0, 0.5);
-//  MPI_Barrier(MPI_COMM_WORLD);
+//  scatteredWave(Ey, EPS_EY, 0.5, 0.0, 0.5);
+  scatteredPulse(Ey, EPS_EY, 0.5, 0.0, 0.5);
   Connection_SendRecvE();
 
 //  ntff3D_SubTimeCalc(Ex, Ey, Ez, Hx, Hy, Hz);
@@ -281,7 +278,6 @@ static void scatteredWave(dcomplex *p, double *eps, double gapX, double gapY, do
         double kr = x*ks_sin_cos + y*ks_sin_sin + z*ks_cos;
         //p[k] -= かも(岡田さんのメール参照)
         p[w] += (ray_coef_EPS_0/eps[w] - ray_coef)*cexp( I*(kr-w_s_time) );
-//        p[w] += ray_coef*(EPSILON_0_S/eps[w] - 1.0)*cexp( I*(kr-w_s_time) );
       }
 }
 
@@ -313,6 +309,7 @@ static void scatteredPulse(dcomplex *p, double *eps, double gapX, double gapY, d
   const double center_peak = (fInfo_s.N_PX/2.0+gapX)*sin_cos_per_c + (fInfo_s.N_PY/2+gapY)*sin_sin_per_c + (fInfo_s.N_PZ/2+gapZ)*cos_per_c; //中心にピークがくる時間
   const double t_minus_t0 = field_getTime()-center_peak + 100; // t-t0. 常に100ステップの時に,領域の中心にピークが来るようにする.
   int w = field_subIndex(1,1,1);
+
   for(int i=1; i<endX; i++, w+=nextX) 
     for(int j=1; j<endY; j++, w+=2) 
       for(int k=1; k<endZ; k++, w+=1)
