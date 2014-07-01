@@ -105,9 +105,9 @@ int main( int argc, char *argv[] )
     //モデルに必要な大きさを求める
     models_needSize(&x_nm, &y_nm, &z_nm);
     
-    fInfo.width_nm  = x_nm + fInfo.h_u_nm*(fInfo.pml + 10) + 100; //モデルの大きさ + pmlレイヤ + 遠方解の積分路(端から5ずつ) + 余白
-    fInfo.depth_nm  = z_nm + fInfo.h_u_nm*(fInfo.pml + 10) + 100;
-    fInfo.height_nm = y_nm + fInfo.h_u_nm*(fInfo.pml + 10) + 100;
+    fInfo.width_nm  = x_nm + fInfo.h_u_nm*(fInfo.pml + 5)*2 + 100; //モデルの大きさ + pmlレイヤ + 遠方解の積分路(端から5ずつ) + 余白
+    fInfo.depth_nm  = z_nm + fInfo.h_u_nm*(fInfo.pml + 5)*2 + 100;
+    fInfo.height_nm = y_nm + fInfo.h_u_nm*(fInfo.pml + 5)*2 + 100;
 
     //lambdaも元に戻してる.
     simulator_resetField(fInfo);
