@@ -35,18 +35,24 @@ static void idle(void);
 #endif
 
 static int start_lambda_nm = 380;
-static int end_lambda_nm   = 640;
-void move(enum MODEL modelType)
+static int end_lambda_nm   = 630;
+void move(enum MODEL modelType, int theta, int phi)
 {
+  char buf[512];
+  sprintf(buf,"%d_deg_%d_deg",theta,phi);
   switch(modelType)
   {
   case LAYER:
     makeDirectory("Multilayer");
-    moveDirectory("Multilayer");
+    moveDirectory("Multilayer");    
+    makeDirectory(buf);
+    moveDirectory(buf);
     break;
   case MIE_SPHERE:
     makeDirectory("Mie");
     moveDirectory("Mie");
+    makeDirectory(buf);
+    moveDirectory(buf);
     break;
   default :
     printf("set Model Layer or Sphere");
@@ -64,11 +70,11 @@ int main( int argc, char *argv[] )
   fInfo.pml       = 10;
   fInfo.lambda_nm = start_lambda_nm;
   fInfo.stepNum   = 1500;
-  fInfo.theta_deg = 0;
+  fInfo.theta_deg = 90;
   fInfo.phi_deg   = 90;
   enum MODEL modelType   = LAYER;//MIE_SPHERE;//NO_MODEL;
   enum SOLVER solberType = MPI_FDTD_3D;
-  move(modelType);
+  move(modelType, fInfo.theta_deg, fInfo.phi_deg);
   MPI_Init( 0, 0 );  
   simulator_init(fInfo, modelType, solberType);
 

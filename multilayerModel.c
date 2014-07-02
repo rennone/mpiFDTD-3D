@@ -13,11 +13,11 @@ static int layerNum;          //枚数
 static bool asymmetry;      //左右比対称
 
 static int start_depth_nm =  300;
-static int end_depth_nm   = 1000;
+static int end_depth_nm   = 300;
 static int delta_depth_nm = 100;
 
 static int start_thickness_nm = 80;
-static int end_thickness_nm   = 120;
+static int end_thickness_nm   = 160;
 static int delta_thickness_nm = 10;
 
 //col : D_Xモード row : D_Yモード
