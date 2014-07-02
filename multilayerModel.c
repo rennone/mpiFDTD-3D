@@ -4,41 +4,50 @@
 #include <stdlib.h>
 #include <math.h>
 
+//幅(x)
+#define ST_WIDTH_NM 300
+#define EN_WIDTH_NM 300
+#define DELTA_WIDTH_NM 100
+
+//奥行き(z)
+#define ST_DEPTH_NM 300
+#define EN_DEPTH_NM 300
+#define DELTA_DEPTH_NM 100
+
+//ラメラの厚さ(y)
+#define ST_THICK_NM 80
+#define EN_THICK_NM 120
+#define DELTA_THICK_NM 10
+
+#define LAYER_NUM 8
+#define ASYMMETRY false
+
+static int depth_nm[2]     = {ST_DEPTH_NM, ST_DEPTH_NM};
+static int width_nm[2]     = {ST_WIDTH_NM, ST_WIDTH_NM};
+static int thickness_nm[2] = {ST_THICK_NM, ST_THICK_NM};
+//static int layerNum = 8;          //枚数
+//static bool asymmetry = false;      //左右比対称
+
 static double depth_s[2];     //奥行き z
 static double width_s[2];     //幅 x
 static double thickness_s[2]; //厚さ y
 static double n[2];            //屈折率
 static double ep[2];           //誘電率 = n*n*ep0
-static int layerNum;          //枚数
-static bool asymmetry;      //左右比対称
 
-static int start_depth_nm =  300;
-static int end_depth_nm   = 1000;
-static int delta_depth_nm = 100;
-
-static int start_thickness_nm = 80;
-static int end_thickness_nm   = 120;
-static int delta_thickness_nm = 10;
+static double posx, posy, posz;
 
 //col : D_Xモード row : D_Yモード
 //x,yを中心に, 計算領域のセルと同じ大きさの領域を調べる
 static double eps(double x, double y, double z, int col, int row, int dep)
 {
-  FieldInfo_S fInfo_s = field_getFieldInfo_S();
-
   double depth  = max(depth_s[0], depth_s[1]);
   double width  = max(width_s[0], width_s[1]);
   double thick  = thickness_s[0] + thickness_s[1];
-  double height = thick*layerNum;
+  double height = thick*LAYER_NUM;
 
-  //領域の中心から, 下にheight/2ずれた位置がレイヤの下部
-  int oy = fInfo_s.N_PY/2 - height/2;
-  int ox = fInfo_s.N_PX/2;
-  int oz = fInfo_s.N_PZ/2;
-  
-  double _x = x-ox;	//ox,oyを座標の原点に
-  double _y = y-oy;
-  double _z = z-oz;
+  double _x = x-posx;	//ox,oyを座標の原点に
+  double _y = y-posy;
+  double _z = z-posz;
 
   //上下左右に飛び出ていないか確認(細分化したセルがあるため, 0.5の余白をとっている)
   if( fabs(_x) > (width/2+0.5) ||
@@ -72,7 +81,7 @@ static double eps(double x, double y, double z, int col, int row, int dep)
 
         int k = (modY > thickness_s[0]); //どっちの屈折率にいるか調べる
 
-        if (sx < 0 && asymmetry)
+        if (sx < 0 && ASYMMETRY)
           k = 1-k;		//左右で反転, 互い違いでなかったら反転しない
 
         //正方形の内側ならその媒質内にある
@@ -85,48 +94,50 @@ static double eps(double x, double y, double z, int col, int row, int dep)
   return EPSILON_0_S*(1-s[0]-s[1]) + ep[0]*s[0] + ep[1]*s[1];
 }
 
-double ( *multilayerModel_EPS(void))(double, double, double, int, int, int)
+double ( *multilayerModel_EPS(void))(double x, double y, double z, int, int, int)
 {
-  width_s[0]     = field_toCellUnit(300);
-  width_s[1]     = field_toCellUnit(300);
-  depth_s[0]     = field_toCellUnit(start_depth_nm);
-  depth_s[1]     = field_toCellUnit(start_depth_nm);
-  thickness_s[0] = field_toCellUnit(start_thickness_nm);
-  thickness_s[1] = field_toCellUnit(start_thickness_nm);
-  layerNum = 8;
+  return eps;
+}
+
+void multilayerModel_init()
+{
+  width_s[0]     = field_toCellUnit(width_nm[0]);
+  width_s[1]     = field_toCellUnit(width_nm[0]);
+  depth_s[0]     = field_toCellUnit(depth_nm[0]);
+  depth_s[1]     = field_toCellUnit(depth_nm[0]);
+  thickness_s[0] = field_toCellUnit(thickness_nm[0]);
+  thickness_s[1] = field_toCellUnit(thickness_nm[0]);
   n[0] = 1.56;
   n[1] = 1.0;
   ep[0] = n[0]*n[0]*EPSILON_0_S;
   ep[1] = n[1]*n[1]*EPSILON_0_S;
 
-  asymmetry = false;
-
-  return eps;
+  FieldInfo_S fInfo_s = field_getFieldInfo_S();
+  //領域の中心から, 下にheight/2ずれた位置がレイヤの下部
+  double height = (thickness_s[0] + thickness_s[1])*LAYER_NUM;
+  posy = fInfo_s.N_PY/2 - height/2;
+  posx = fInfo_s.N_PX/2;
+  posz = fInfo_s.N_PZ/2;  
 }
 
-void multilayerModel_setThickness(int thickness1_nm, int thickness2_nm)
-{
-  thickness_s[0] = field_toCellUnit(thickness1_nm);
-  thickness_s[1] = field_toCellUnit(thickness2_nm);
-}
 
 // 構造が終わったか確認
 bool multilayerModel_isFinish()
 {
-  depth_s[0] += field_toCellUnit(delta_depth_nm);
-  depth_s[1] += field_toCellUnit(delta_depth_nm);
+  depth_nm[0] += DELTA_DEPTH_NM;
+  depth_nm[1] += DELTA_DEPTH_NM;
 
   //奥行きが大きくなったら,厚みを増やす
-  if(depth_s[0] > field_toCellUnit(end_depth_nm))
+  if(depth_nm[0] > EN_DEPTH_NM)
   {
-    thickness_s[0] += field_toCellUnit(delta_thickness_nm);
-    thickness_s[1] += field_toCellUnit(delta_thickness_nm);
-    
-    depth_s[0] = field_toCellUnit(start_depth_nm);
-    depth_s[1] = field_toCellUnit(start_depth_nm);
+    thickness_nm[0] += DELTA_THICK_NM;
+    thickness_nm[1] += DELTA_THICK_NM;
 
+    depth_nm[0] = ST_DEPTH_NM;
+    depth_nm[1] = ST_DEPTH_NM;
+    
     //厚みがend_thicknessに達したら終了
-    if(thickness_s[0] > field_toCellUnit(end_thickness_nm))
+    if(thickness_nm[0] > EN_THICK_NM)
       return true;    
   }
 
@@ -134,26 +145,19 @@ bool multilayerModel_isFinish()
 }
 
 void multilayerModel_needSize(int *x_nm, int *y_nm,int *z_nm)
-{
-  double width = max(width_s[0], width_s[1]);
-  double depth = max(depth_s[0], depth_s[1]);
-  double thick = thickness_s[0] + thickness_s[1];
-  (*x_nm) = field_toPhysicalUnit(width);
-  (*z_nm) = field_toPhysicalUnit(depth);
-  (*y_nm) = field_toPhysicalUnit(thick*layerNum);
-/*
-  printf("w=%d,d=%d,t=%d\n",(int)field_toPhysicalUnit(width),
-         (int)field_toPhysicalUnit(depth),
-         (int)field_toPhysicalUnit(thick*layerNum));
-*/
+{ 
+  (*x_nm) = max(width_nm[0], width_nm[1]);
+  (*z_nm) = max(depth_nm[0], depth_nm[1]);
+  (*y_nm) = (thickness_nm[0] + thickness_nm[1])*LAYER_NUM;
+
+  printf("w=%d,d=%d,t=%d\n",*x_nm, *y_nm, *z_nm);
 }
 
 void multilayerModel_moveDirectory()
 {
   char buf[512];
 
-  sprintf(buf, "thick_%dnm_depth_%dnm",(int)field_toPhysicalUnit(thickness_s[0]),
-    (int)field_toPhysicalUnit(depth_s[0]));
+  sprintf(buf, "thick_%dnm_depth_%dnm",thickness_nm[0],depth_nm[0]);
   makeDirectory(buf);
   moveDirectory(buf);
 }

@@ -34,9 +34,14 @@ static void idle(void);
 
 #endif
 
+#define ST_LAMBDA_NM 380
+#define EN_LAMBDA_NM 380
+#define DELTA_LAMBDA_NM 10
 static int start_lambda_nm = 380;
 static int end_lambda_nm   = 640;
-void move(enum MODEL modelType)
+static int lambda_nm;
+
+static void move(enum MODEL modelType)
 {
   switch(modelType)
   {
@@ -54,29 +59,51 @@ void move(enum MODEL modelType)
   }
 }
 
+//モデルとは別に必要なフィールドの大きさ
+static void setFieldSize(FieldInfo *fInfo, int x_nm, int y_nm, int z_nm)
+{
+  //pmlレイヤ + 遠方解の積分路(端から5ずつ) + 余白
+  int extends = fInfo->h_u_nm*(fInfo->pml + 5)*2 + 200;
+
+  fInfo->width_nm  = x_nm + extends;
+  fInfo->height_nm = y_nm + extends;
+  fInfo->depth_nm  = z_nm + extends;
+}
+
 int main( int argc, char *argv[] )
 {
+  enum MODEL modelType   = LAYER;//MIE_SPHERE;//NO_MODEL;
+  models_setModel(modelType);
+  
+  enum SOLVER solberType = MPI_FDTD_3D;
+  simulator_setSolver(solberType);
+
+  //モデルに必要な大きさを求める
+  int x_nm, y_nm, z_nm;
+  models_needSize(&x_nm, &y_nm, &z_nm);
+
   FieldInfo fInfo;
-  fInfo.width_nm  = 1000;
-  fInfo.height_nm = 80*2*8 + 20*10 + 100; //model height + (pml+ntff)*h_u + padding
-  fInfo.depth_nm  = 1000;
   fInfo.h_u_nm    = 10;
   fInfo.pml       = 10;
   fInfo.lambda_nm = start_lambda_nm;
-  fInfo.stepNum   = 1500;
+  fInfo.stepNum   = 10;
   fInfo.theta_deg = 0;
   fInfo.phi_deg   = 90;
-  enum MODEL modelType   = LAYER;//MIE_SPHERE;//NO_MODEL;
-  enum SOLVER solberType = MPI_FDTD_3D;
+  
+  setFieldSize(&fInfo, x_nm, y_nm, z_nm);
+
+  printf("%d, %d, %d\n",fInfo.width_nm, fInfo.height_nm, fInfo.depth_nm);
+  
   move(modelType);
-  MPI_Init( 0, 0 );  
-  simulator_init(fInfo, modelType, solberType);
+  
+  MPI_Init( 0, 0 );
+  simulator_init(fInfo);
 
 #ifndef USE_OPENGL    //only calculate mode
   while(1)
   {
     models_moveDirectory();
-    int lambda_nm = field_toPhysicalUnit(field_getLambda_S());
+    lambda_nm = field_toPhysicalUnit(field_getLambda_S());
     while(lambda_nm <= end_lambda_nm)
     {
       while(!simulator_isFinish())
@@ -104,41 +131,39 @@ int main( int argc, char *argv[] )
     int x_nm, y_nm, z_nm;
     //モデルに必要な大きさを求める
     models_needSize(&x_nm, &y_nm, &z_nm);
+    setFieldSize(&fInfo, x_nm, y_nm, z_nm);
+    fInfo.lambda_nm = ST_LAMBDA_NM;
+    simulator_init(fInfo);
     
-    fInfo.width_nm  = x_nm + fInfo.h_u_nm*(fInfo.pml + 5)*2 + 100; //モデルの大きさ + pmlレイヤ + 遠方解の積分路(端から5ずつ) + 余白
-    fInfo.depth_nm  = z_nm + fInfo.h_u_nm*(fInfo.pml + 5)*2 + 100;
-    fInfo.height_nm = y_nm + fInfo.h_u_nm*(fInfo.pml + 5)*2 + 100;
-
-    //lambdaも元に戻してる.
-    simulator_resetField(fInfo);
     SubFieldInfo_S sInfo_s = field_getSubFieldInfo_S();
     if(sInfo_s.Rank == 0)
-      printf("next Simulation. lambda = %d, size(%d, %d, %d)\n",
-           lambda_nm, fInfo.width_nm, fInfo.height_nm, fInfo.depth_nm);    
+      printf("next Simulation. lambda = %d, size(%d, %d, %d)\n", lambda_nm, fInfo.width_nm, fInfo.height_nm, fInfo.depth_nm);    
     MPI_Barrier(MPI_COMM_WORLD);
   }
   MPI_Finalize();
 #endif
 
 #ifdef USE_OPENGL
-    SubFieldInfo_S subInfo = field_getSubFieldInfo_S(); 
-    int windowX = 1.0*subInfo.OFFSET_X / subInfo.SUB_N_X * WINDOW_WIDTH;
-    int windowY = 800-1.0*subInfo.OFFSET_Y/subInfo.SUB_N_Y * WINDOW_HEIGHT - WINDOW_HEIGHT;
-enum COLOR_MODE colorMode = CREAL;
 
-    glutInit(&argc, argv);
-    glutInitWindowPosition(windowX,windowY);
-    glutInitWindowSize(WINDOW_WIDTH, WINDOW_HEIGHT);
-    glutInitDisplayMode(GLUT_RGBA | GLUT_DEPTH | GLUT_DOUBLE);
-    glutCreateWindow("FDTD Simulator");
-    glutDisplayFunc(display);
-    glutIdleFunc(idle);
-    glewInit();
-    drawer_init(colorMode);
-    glutMainLoop();
+  models_moveDirectory();
+  SubFieldInfo_S subInfo = field_getSubFieldInfo_S(); 
+  int windowX = 1.0*subInfo.OFFSET_X / subInfo.SUB_N_X * WINDOW_WIDTH;
+  int windowY = 800-1.0*subInfo.OFFSET_Y/subInfo.SUB_N_Y * WINDOW_HEIGHT - WINDOW_HEIGHT;
+  enum COLOR_MODE colorMode = CREAL;
+
+  glutInit(&argc, argv);
+  glutInitWindowPosition(windowX,windowY);
+  glutInitWindowSize(WINDOW_WIDTH, WINDOW_HEIGHT);
+  glutInitDisplayMode(GLUT_RGBA | GLUT_DEPTH | GLUT_DOUBLE);
+  glutCreateWindow("FDTD Simulator");
+  glutDisplayFunc(display);
+  glutIdleFunc(idle);
+  glewInit();
+  drawer_init(colorMode);
+  glutMainLoop();
 #endif
 
-    return 0;
+  return 0;
 }
 
 #ifdef USE_OPENGL
@@ -174,18 +199,55 @@ void display(void)
   glutSwapBuffers();
 }
 
+
 void idle(void)
 {
   simulator_calc();
+  
+  if( !simulator_isFinish() )
+    return;
+  
+  //終了したときの処理
 
-  if( simulator_isFinish() ){
+  //波長を変える
+  lambda_nm += 10;
+
+  //すべての波長を計算したら->構造を変える
+  if(lambda_nm > EN_LAMBDA_NM)
+  {
     MPI_Barrier(MPI_COMM_WORLD);
-    simulator_finish();
-    MPI_Finalize();
-    exit(0);
-  }
+    simulator_finish(); //シミュレーションを終了させる(メモリを解放する)
+
+    moveDirectory("../"); //一つ上のディレクトリに戻る
+    
+    //構造が終了か調べる
+    if( !models_isFinish())
+    {
+      FieldInfo fInfo = field_getFieldInfo();
+
+      int x_nm, y_nm, z_nm;
+      models_needSize(&x_nm, &y_nm, &z_nm);      //フィールドの大きさを構造に合わせて変化させる
+      setFieldSize(&fInfo, x_nm, y_nm, z_nm);
+      
+      fInfo.lambda_nm = ST_LAMBDA_NM;      //lambdaも元に戻してる.
+      simulator_init(fInfo);
+      SubFieldInfo_S sInfo_s = field_getSubFieldInfo_S();
+      if(sInfo_s.Rank == 0)
+        printf("next Simulation. lambda = %d, size(%d, %d, %d)\n",
+               lambda_nm, fInfo.width_nm, fInfo.height_nm, fInfo.depth_nm);
+
+      models_moveDirectory();
+    }
+  } else {
+    field_setLambda(lambda_nm);
+    simulator_reset(); //電磁波の状態とステップ数だけリセット
+    return;
+  }  
+
+  MPI_Finalize();
+  exit(0);
+  
   glutPostRedisplay();  //再描画
-  MPI_Barrier(MPI_COMM_WORLD);
 }
 
 #endif

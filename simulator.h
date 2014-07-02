@@ -11,7 +11,8 @@ enum SOLVER{
   MPI_FDTD_3D
 };
 
-extern void simulator_init(FieldInfo fInfo, enum MODEL m, enum SOLVER s);
+extern void simulator_setSolver(enum SOLVER s);
+extern void simulator_init(FieldInfo fInfo);
 extern void simulator_calc(void);
 extern bool simulator_isFinish(void);
 extern void simulator_finish(void);

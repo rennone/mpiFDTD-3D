@@ -67,14 +67,20 @@ void simulator_calc(){
     printf( "time = %d\n", (int)time );
 }
 
-void simulator_init(FieldInfo field_info, enum MODEL model, enum SOLVER solver){
+void simulator_setSolver(enum SOLVER solver)
+{
+  setSolver(solver);
+}
+
+void simulator_init(FieldInfo field_info){
   //横幅(nm), 縦幅(nm), 1セルのサイズ(nm), pmlレイヤの数, 波長(nm), 計算ステップ
   field_init(field_info);
 
+  models_init();
   /*NO_MODEL. MIE_CYLINDER, SHELF(todo), NONSHELF(todo) */
-  models_setModel(model);     //次にこれ,モデル(散乱体)を定義
+//  models_setModel(model);     //次にこれ,モデル(散乱体)を定義
 
-  setSolver(solver);      //Solverの設定
+//  setSolver(solver);  //Solverの設定
 
   (*initMethod)();   //Solverの初期化, EPS, Coeffの設定
 
