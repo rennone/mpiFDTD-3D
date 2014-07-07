@@ -3,29 +3,36 @@
 #include "field.h"
 #include "function.h"
 
+#define ST_RADIUS_NM 100
+#define EN_RADIUS_NM 100
+#define DELTA_RADIUS_NM 50
+
+static int radius_nm = ST_RADIUS_NM;
 static double radius;
 static double epsilon;
+
 static double posx;
 static double posy;
 static double posz;
 
-static double start_radius = 100;
-static double end_radius   = 100;
-
 static double eps(double, double, double, int, int, int);
 
 double (*circleModel_EPS())(double, double, double, int , int, int)
+{
+  return eps;
+}
+
+void circleModel_init()
 {
   FieldInfo_S fInfo_s = field_getFieldInfo_S();
   posx = fInfo_s.N_PX/2;
   posy = fInfo_s.N_PY/2;
   posz = fInfo_s.N_PZ/2;
 
-  radius = field_toCellUnit(start_radius);
+  radius = field_toCellUnit(radius_nm);
 
   double n = 1.6;
   epsilon = n*n*EPSILON_0_S;
-  return eps;
 }
 
 //col : D_Xモード, row : D_Yモード
@@ -76,7 +83,7 @@ bool circleModel_isFinish()
   //50nm増やす
   radius += field_toCellUnit(50);
   
-  return radius > field_toCellUnit(end_radius);
+  return radius > field_toCellUnit(EN_RADIUS_NM);
 }
 
 void circleModel_moveDirectory(void)

@@ -6,21 +6,21 @@
 //#include "shelf.h"
 //#include "nonshelf.h"
 
+static void (*initMethod)();
 static bool (*isFinishMethod)(void);
-static bool (*moveDirectoryMethod)(void);
-
+static void (*moveDirectoryMethod)(void);
 static double (*epsMethod)(double, double, double, int, int, int);
 static void (*needSizeMethod)(int*, int*, int*);
+
 static void noModel(void)
 {
-  //no material
   epsMethod = noModel_EPS();
 }
 
 static void circleModel(void)
-{
-  //cylinder material whitch radius = lambda, origin = center of field
+{ 
   epsMethod = circleModel_EPS();
+  initMethod = multilayerModel_init;
   isFinishMethod = circleModel_isFinish;
   moveDirectoryMethod = circleModel_moveDirectory;
 }
@@ -28,6 +28,7 @@ static void circleModel(void)
 static void multilayerModel()
 {
   epsMethod      = multilayerModel_EPS();
+  initMethod     = multilayerModel_init;
   isFinishMethod = multilayerModel_isFinish;
   needSizeMethod = multilayerModel_needSize;
   moveDirectoryMethod = multilayerModel_moveDirectory;
@@ -42,8 +43,6 @@ void models_setModel(enum MODEL model)
   case MIE_SPHERE:
     circleModel();
     break;
-  case SHELF :
-  case NONSHELF:
   case LAYER:
     multilayerModel();
     break;
@@ -67,9 +66,13 @@ double models_eps(double x, double y, double z, enum MODE mode){
     epsilon = (*epsMethod)(x, y, z, 0, 1, 1);
   case D_XYZ :
     epsilon = (*epsMethod)(x, y, z, 1, 1, 1);
-  }
-  
+  }  
   return epsilon;
+}
+
+void models_init()
+{
+  (*initMethod)();
 }
 
 bool models_isFinish()
@@ -84,6 +87,6 @@ void models_needSize(int *x_nm, int *y_nm,int *z_nm)
 }
 
 void models_moveDirectory(void)
-{
+{  
   (*moveDirectoryMethod)();
 }
