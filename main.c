@@ -107,24 +107,6 @@ static void outputImage()
   MPI_Barrier(MPI_COMM_WORLD);
 }
 
-/*
-static void move(enum MODEL modelType)
-{
-  switch(modelType)
-  {
-  case LAYER:
-    makeDirectory("Multilayer");
-    moveDirectory("Multilayer");
-    break;
-  case MIE_SPHERE:
-    makeDirectory("Mie");
-    moveDirectory("Mie");
-    break;
-  default :
-    printf("set Model Layer or Sphere");
-    exit(2);
-  }
-  }*/
 
 //モデルとは別に必要なフィールドの大きさ
 static void setFieldSize(FieldInfo *fInfo, int x_nm, int y_nm, int z_nm)
@@ -156,15 +138,11 @@ int main( int argc, char *argv[] )
   fInfo.h_u_nm    = 10;
   fInfo.pml       = 10;
   fInfo.lambda_nm = start_lambda_nm;
-  fInfo.stepNum   = 10;
-  fInfo.theta_deg = 0;
-  fInfo.phi_deg   = 90;
-  
+  fInfo.stepNum   = 1500;
+  fInfo.theta_deg = 90;
+  fInfo.phi_deg   = 90;  
   setFieldSize(&fInfo, x_nm, y_nm, z_nm);
 
-  printf("%d, %d, %d\n",fInfo.width_nm, fInfo.height_nm, fInfo.depth_nm);
-  
-//  move(modelType);
   models_moveDirectory();
   
   MPI_Init( 0, 0 );

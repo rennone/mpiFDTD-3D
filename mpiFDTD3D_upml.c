@@ -201,7 +201,7 @@ static void init(){
 }
 
 static void finish(){
-  output();
+    output();
 //  ntff3D_TimeOutput();
   freeMemories();
 }
