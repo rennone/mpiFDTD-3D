@@ -220,10 +220,9 @@ static void update(void)
   calcJDE();
 
   scatteredWave(Ez, EPS_EZ, 0.5, 0.5, 0.0);
-  //  scatteredPulse(Ey, EPS_EY, 0.5, 0.0, 0.5);
+  //scatteredPulse(Ey, EPS_EY, 0.5, 0.0, 0.5);
   Connection_SendRecvE();
-
-//  ntff3D_SubTimeCalc(Ex, Ey, Ez, Hx, Hy, Hz);
+//ntff3D_SubTimeCalc(Ex, Ey, Ez, Hx, Hy, Hz);
 }
 
 static void pointLightInCenter(dcomplex *p)
@@ -499,8 +498,7 @@ static  void calcJDE()
     Dz[w] = C_DZ[w]*Dz[w] + C_DZJZ1[w]*Jz[w] - C_DZJZ0[w]*nowJz;
     Ez[w] = Dz[w]/EPS_EZ[w];
   }
-    
-  }
+}
 
 //calculate M and B
 static void calcMBH()
@@ -514,7 +512,7 @@ static void calcMBH()
     const int w_btm = field_subBottom(w);   //一つ上
     const int w_bck = field_subBack(w);  //1つ前        
     const dcomplex nowMx = Mx[w];    
-    Mx[w] = C_MX[w]*Mx[w] - C_MXEYEZ[w]*(Ez[w]-Ez[w_btm] -Ey[w]+Ey[w_bck]); //原因
+    Mx[w] = C_MX[w]*Mx[w] - C_MXEYEZ[w]*(Ez[w]-Ez[w_btm] -Ey[w]+Ey[w_bck]);
     Bx[w] = C_BX[w]*Bx[w] + C_BXMX1[w]*Mx[w] - C_BXMX0[w]*nowMx;
     Hx[w] = Bx[w]/MU_0_S;
   }
@@ -525,7 +523,7 @@ static void calcMBH()
     const int w_lft = field_subLeft(w);
     const int w_bck = field_subBack(w);  //1つ前
     const dcomplex nowMy = My[w];
-    My[w] = C_MY[w]*My[w] - C_MYEXEZ[w]*( Ex[w]-Ex[w_bck] -Ez[w]+Ez[w_lft]); //原因
+    My[w] = C_MY[w]*My[w] - C_MYEXEZ[w]*( Ex[w]-Ex[w_bck] -Ez[w]+Ez[w_lft]);
     By[w] = C_BY[w]*By[w] + C_BYMY1[w]*My[w] - C_BYMY0[w]*nowMy;
     Hy[w] = By[w]/MU_0_S;
   }
@@ -676,10 +674,10 @@ static void setCoefficient()
 
         sig_ex_x = sig_max*field_sigmaX(x    ,y+0.5,z+0.5);
         sig_ex_y = sig_max*field_sigmaY(x    ,y+0.5,z+0.5);
-        sig_ex_z = sig_max*field_sigmaZ(x    ,y+0.5,z+0.5);        
+        sig_ex_z = sig_max*field_sigmaZ(x    ,y+0.5,z+0.5);
         sig_ey_x = sig_max*field_sigmaX(x+0.5,y    ,z+0.5);
         sig_ey_y = sig_max*field_sigmaY(x+0.5,y    ,z+0.5);
-        sig_ey_z = sig_max*field_sigmaZ(x+0.5,y    ,z+0.5);        
+        sig_ey_z = sig_max*field_sigmaZ(x+0.5,y    ,z+0.5);
         sig_ez_x = sig_max*field_sigmaX(x+0.5,y+0.5,z    );
         sig_ez_y = sig_max*field_sigmaY(x+0.5,y+0.5,z    );
         sig_ez_z = sig_max*field_sigmaZ(x+0.5,y+0.5,z    );
