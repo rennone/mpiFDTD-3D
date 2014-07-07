@@ -243,6 +243,15 @@ void multilayerModel_needSize(int *x_nm, int *y_nm,int *z_nm)
 void multilayerModel_moveDirectory()
 {
   char buf[512];
+  
+  makeDirectory("Multilayer");
+  moveDirectory("Multilayer");
+
+  
+  sprintf(buf, "%s_%s",    ASYMMETRY ? "asymmetry" : "symmetry",
+                   CIRCLE_LAYER ? "circleLayer" : "rectangleLayer");
+  makeDirectory(buf);
+  moveDirectory(buf);
 
   sprintf(buf, "thick_%dnm_depth_%dnm",thickness_nm[0],depth_nm[0]);
   makeDirectory(buf);

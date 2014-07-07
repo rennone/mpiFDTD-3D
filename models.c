@@ -8,7 +8,7 @@
 
 static void (*initMethod)();
 static bool (*isFinishMethod)(void);
-static bool (*moveDirectoryMethod)(void);
+static void (*moveDirectoryMethod)(void);
 static double (*epsMethod)(double, double, double, int, int, int);
 static void (*needSizeMethod)(int*, int*, int*);
 
@@ -87,6 +87,6 @@ void models_needSize(int *x_nm, int *y_nm,int *z_nm)
 }
 
 void models_moveDirectory(void)
-{
+{  
   (*moveDirectoryMethod)();
 }

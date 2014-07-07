@@ -32,7 +32,10 @@ static void drawSubField();
 static void display(void);
 static void idle(void);
 
-#endif
+#endif //USE_OPENGL
+
+
+char root[512];
 
 #define ST_LAMBDA_NM 380
 #define EN_LAMBDA_NM 380
@@ -41,6 +44,70 @@ static int start_lambda_nm = 380;
 static int end_lambda_nm   = 640;
 static int lambda_nm;
 
+static void cpy(double *entire, double *region, int dx, int dy, int dz)
+{
+  //sub領域のregionをentireにコピー
+  //SUB_N_PXとかは, 全プロセスで共通(なはず)なので, subInfo_sの値をそのまま使う
+  //オフセットはプロセスごとに違うので外部から与える.  
+  SubFieldInfo_S subInfo_s = field_getSubFieldInfo_S();  
+  for(int i=1; i<subInfo_s.SUB_N_PX-1; i++)  
+    for(int j=1; j<subInfo_s.SUB_N_PY-1; j++)
+      for(int k=1; k<subInfo_s.SUB_N_PZ-1; k++)
+      {
+        int w = field_index(i+dx,j+dy,k+dz);
+        entire[w] = region[field_subIndex(i,j,k)];
+      }  
+}
+
+//分割された領域をまとめる.
+static double* unifyToRank0(double *phi)
+{
+  SubFieldInfo_S subInfo_s = field_getSubFieldInfo_S();
+  FieldInfo_S fInfo_s = field_getFieldInfo_S();
+  
+  //マスターにすべて集める
+  if(subInfo_s.Rank == 0)
+  {
+    MPI_Status status;
+    double *entire = newDouble(fInfo_s.N_CELL);
+    cpy(entire, phi, subInfo_s.OFFSET_X, subInfo_s.OFFSET_Y, subInfo_s.OFFSET_Z);
+
+    double *tmp = newDouble(subInfo_s.SUB_N_CELL);
+    int offset[3];
+    for(int i=1; i<subInfo_s.Nproc; i++)
+    {
+      MPI_Recv(offset, 3, MPI_INT, i, 0, MPI_COMM_WORLD, &status);
+      MPI_Recv(tmp, subInfo_s.SUB_N_CELL, MPI_DOUBLE, i, 0, MPI_COMM_WORLD, &status);
+
+      cpy(entire, tmp, offset[0], offset[1], offset[2]);      
+    }
+    free(tmp);
+    return entire;
+  }
+  else {
+    int offset[3];
+    offset[0] = subInfo_s.OFFSET_X;
+    offset[1] = subInfo_s.OFFSET_Y;
+    offset[2] = subInfo_s.OFFSET_Z;
+    MPI_Send(offset, 3, MPI_INT, 0, 0, MPI_COMM_WORLD);
+    MPI_Send(phi, subInfo_s.SUB_N_CELL, MPI_DOUBLE, 0, 0, MPI_COMM_WORLD);
+    
+    return NULL; //マスター以外はNULLを返す.
+  }
+}
+
+
+static void outputImage()
+{
+  double *entire = unifyToRank0(simulator_getEps());
+  FieldInfo_S fInfo_s = field_getFieldInfo_S();
+  if(entire != NULL)
+    drawer_outputImage("image.bmp", entire, fInfo_s.N_PX, fInfo_s.N_PY, fInfo_s.N_PZ, field_index);
+
+  MPI_Barrier(MPI_COMM_WORLD);
+}
+
+/*
 static void move(enum MODEL modelType)
 {
   switch(modelType)
@@ -57,7 +124,7 @@ static void move(enum MODEL modelType)
     printf("set Model Layer or Sphere");
     exit(2);
   }
-}
+  }*/
 
 //モデルとは別に必要なフィールドの大きさ
 static void setFieldSize(FieldInfo *fInfo, int x_nm, int y_nm, int z_nm)
@@ -72,6 +139,8 @@ static void setFieldSize(FieldInfo *fInfo, int x_nm, int y_nm, int z_nm)
 
 int main( int argc, char *argv[] )
 {
+  getcwd(root, 512); //カレントディレクトリを保存
+  
   enum MODEL modelType   = LAYER;//MIE_SPHERE;//NO_MODEL;
   models_setModel(modelType);
   
@@ -94,15 +163,16 @@ int main( int argc, char *argv[] )
 
   printf("%d, %d, %d\n",fInfo.width_nm, fInfo.height_nm, fInfo.depth_nm);
   
-  move(modelType);
+//  move(modelType);
+  models_moveDirectory();
   
   MPI_Init( 0, 0 );
   simulator_init(fInfo);
-
+  outputImage();
+  
 #ifndef USE_OPENGL    //only calculate mode
   while(1)
-  {
-    models_moveDirectory();
+  {  
     lambda_nm = field_toPhysicalUnit(field_getLambda_S());
     while(lambda_nm <= end_lambda_nm)
     {
@@ -123,18 +193,23 @@ int main( int argc, char *argv[] )
         printf("next Simulation. lambda = %d\n", lambda_nm);
     }
     simulator_finish(); //構造を変えるのでシミュレーションを終わらせる.
-    moveDirectory("../");
+    
     //構造が終了か調べる
     if(models_isFinish())
       break;
 
+    //移動し直し
+    moveDirectory(root);
+    models_moveDirectory();
+    
     int x_nm, y_nm, z_nm;
     //モデルに必要な大きさを求める
     models_needSize(&x_nm, &y_nm, &z_nm);
     setFieldSize(&fInfo, x_nm, y_nm, z_nm);
     fInfo.lambda_nm = ST_LAMBDA_NM;
     simulator_init(fInfo);
-    
+
+    // outputImage();
     SubFieldInfo_S sInfo_s = field_getSubFieldInfo_S();
     if(sInfo_s.Rank == 0)
       printf("next Simulation. lambda = %d, size(%d, %d, %d)\n", lambda_nm, fInfo.width_nm, fInfo.height_nm, fInfo.depth_nm);    
@@ -144,8 +219,6 @@ int main( int argc, char *argv[] )
 #endif
 
 #ifdef USE_OPENGL
-
-  models_moveDirectory();
   SubFieldInfo_S subInfo = field_getSubFieldInfo_S(); 
   int windowX = 1.0*subInfo.OFFSET_X / subInfo.SUB_N_X * WINDOW_WIDTH;
   int windowY = 800-1.0*subInfo.OFFSET_Y/subInfo.SUB_N_Y * WINDOW_HEIGHT - WINDOW_HEIGHT;
@@ -218,7 +291,7 @@ void idle(void)
     MPI_Barrier(MPI_COMM_WORLD);
     simulator_finish(); //シミュレーションを終了させる(メモリを解放する)
 
-    moveDirectory("../"); //一つ上のディレクトリに戻る
+//    moveDirectory("../"); //一つ上のディレクトリに戻る
     
     //構造が終了か調べる
     if( !models_isFinish())
@@ -231,6 +304,9 @@ void idle(void)
       
       fInfo.lambda_nm = ST_LAMBDA_NM;      //lambdaも元に戻してる.
       simulator_init(fInfo);
+
+      outputImage();
+      
       SubFieldInfo_S sInfo_s = field_getSubFieldInfo_S();
       if(sInfo_s.Rank == 0)
         printf("next Simulation. lambda = %d, size(%d, %d, %d)\n",

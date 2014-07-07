@@ -27,4 +27,6 @@ extern void drawer_finish(void);
 extern void drawer_draw(void);
 #endif
 
+extern void drawer_outputImage(char *fileName, double *model, int width, int height, int depth, int (*indexMethod)(int, int, int));
+extern void drawer_screenshot(const char* filename);
 #endif
