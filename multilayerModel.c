@@ -5,7 +5,7 @@
 #include <math.h>
 
 //円形の多層膜
-#define CIRCLE_LAYER true
+#define CIRCLE_LAYER false
 
 //幅(x)
 #define ST_WIDTH_NM 300
@@ -120,6 +120,45 @@ static double eps_circle(double x, double y, double z, int col, int row, int dep
   return EPSILON_0_S*(1-s[0]-s[1]) + ep[0]*s[0] + ep[1]*s[1];
 }
 
+
+//RECTANGLE_LAYERで使う
+//横幅を計算
+static double calc_width(double sx, double sy, double wid, double hei, double modY, int k)
+{
+  double p = 1 - sy/hei;
+  double new_wid = wid*(p + (1-p)*edge_width_rate);
+
+  //ラメラの下を基準とした位置を求める
+  double dh = k==0 ? modY : modY - thickness_s[0];
+  double c  = k==0 ? c0_x : c1_x;
+
+//互い違いの場合はdhを再計算
+  if(ASYMMETRY && sx < 0){
+    dh = (k==1 ? modY : modY - thickness_s[1]);
+  }
+
+  //2次関数で横幅を計算
+  return c*pow((dh-thickness_s[k]/2),2) + new_wid;
+}
+
+static double calc_depth(double sx, double sy, double dep, double hei, double modY, int k)
+{
+  double p = 1 - sy/hei;
+  double new_dep = dep*(p + (1-p)*edge_width_rate);
+
+  //ラメラの下を基準とした位置を求める
+  double dh = k==0 ? modY : modY - thickness_s[0];
+  double c  = k==0 ? c0_z : c1_z;
+
+//互い違いの場合はdhを再計算
+  if(ASYMMETRY && sx < 0){
+    dh = (k==1 ? modY : modY - thickness_s[1]);
+  }
+
+  //2次関数で横幅を計算
+  return c*pow((dh-thickness_s[k]/2),2) + new_dep;
+}
+
 //col : D_Xモード row : D_Yモード
 //x,yを中心に, 計算領域のセルと同じ大きさの領域を調べる
 static double eps(double x, double y, double z, int col, int row, int dep)
@@ -168,8 +207,10 @@ static double eps(double x, double y, double z, int col, int row, int dep)
         if (sx < 0 && ASYMMETRY)
           k = 1-k;		//左右で反転, 互い違いでなかったら反転しない
 
+        double wid = calc_width(sx, sy, width_s[k], height, modY, k);
+        double dep = calc_depth(sx, sy, depth_s[k], height, modY, k);
         //正方形の内側ならその媒質内にある
-        if( abs(sx) < width_s[k]/2 && abs(sz) < depth_s[k] )
+        if( abs(sx) < width_s[k]/2 && abs(sz) < depth_s[k]/2 )
           s[k] +=1;
       }
 
@@ -184,27 +225,6 @@ double ( *multilayerModel_EPS(void))(double x, double y, double z, int, int, int
     return eps_circle;
   else
     return eps;
-}
-
-void multilayerModel_init()
-{
-  width_s[0]     = field_toCellUnit(width_nm[0]);
-  width_s[1]     = field_toCellUnit(width_nm[0]);
-  depth_s[0]     = field_toCellUnit(depth_nm[0]);
-  depth_s[1]     = field_toCellUnit(depth_nm[0]);
-  thickness_s[0] = field_toCellUnit(thickness_nm[0]);
-  thickness_s[1] = field_toCellUnit(thickness_nm[0]);
-  n[0] = 1.56;
-  n[1] = 1.0;
-  ep[0] = n[0]*n[0]*EPSILON_0_S;
-  ep[1] = n[1]*n[1]*EPSILON_0_S;
-
-  FieldInfo_S fInfo_s = field_getFieldInfo_S();
-  //領域の中心から, 下にheight/2ずれた位置がレイヤの下部
-  double height = (thickness_s[0] + thickness_s[1])*LAYER_NUM;
-  posy = fInfo_s.N_PY/2 - height/2;
-  posx = fInfo_s.N_PX/2;
-  posz = fInfo_s.N_PZ/2;  
 }
 
 
@@ -256,4 +276,33 @@ void multilayerModel_moveDirectory()
   sprintf(buf, "thick_%dnm_depth_%dnm",thickness_nm[0],depth_nm[0]);
   makeDirectory(buf);
   moveDirectory(buf);
+}
+
+
+void multilayerModel_init()
+{
+  width_s[0]     = field_toCellUnit(width_nm[0]);
+  width_s[1]     = field_toCellUnit(width_nm[0]);
+  depth_s[0]     = field_toCellUnit(depth_nm[0]);
+  depth_s[1]     = field_toCellUnit(depth_nm[0]);
+  thickness_s[0] = field_toCellUnit(thickness_nm[0]);
+  thickness_s[1] = field_toCellUnit(thickness_nm[0]);
+  n[0] = 1.56;
+  n[1] = 1.0;
+  ep[0] = n[0]*n[0]*EPSILON_0_S;
+  ep[1] = n[1]*n[1]*EPSILON_0_S;
+
+  FieldInfo_S fInfo_s = field_getFieldInfo_S();
+  //領域の中心から, 下にheight/2ずれた位置がレイヤの下部
+  double height = (thickness_s[0] + thickness_s[1])*LAYER_NUM;
+  posy = fInfo_s.N_PY/2 - height/2;
+  posx = fInfo_s.N_PX/2;
+  posz = fInfo_s.N_PZ/2;
+
+  //CIRCLE_LAYERで使う
+  c0_x = 4*width_s[0]*(CURVE-1)/thickness_s[0]/thickness_s[0];
+  c1_x = 4*width_s[1]*(CURVE-1)/thickness_s[1]/thickness_s[1];
+
+  c0_z = 4*depth_s[0]*(CURVE-1)/thickness_s[0]/thickness_s[0];
+  c1_z = 4*depth_s[1]*(CURVE-1)/thickness_s[1]/thickness_s[1];
 }
